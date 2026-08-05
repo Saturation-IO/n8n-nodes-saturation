@@ -2,11 +2,11 @@ name: Publish
 
 # Verify on every push and PR; publish only on a release a maintainer cuts.
 #
-# Publishing runs in CI rather than from a laptop on purpose: npm provenance is
-# generated from GitHub's OIDC token, so `npm publish --provenance` only produces
-# a real attestation here. n8n has required provenance for community nodes since
-# 2026-05-01, and provenance cannot be produced from a private repository, which
-# is why this package lives in its own public repo instead of the monorepo.
+# Publishing runs in CI rather than from a laptop on purpose: provenance is
+# generated from GitHub's OIDC identity, so only a CI run can produce a real
+# attestation. n8n has required provenance for community nodes since 2026-05-01,
+# and provenance cannot be produced from a private repository, which is why this
+# package lives in its own public repo instead of the monorepo.
 on:
   push:
     branches: [main]
@@ -41,7 +41,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      # Required for npm provenance via OIDC. Without it `--provenance` fails.
+      # The entire publish credential. npm matches this OIDC token against the
+      # package's trusted-publisher config; without it, publishing fails.
       id-token: write
     steps:
       - uses: actions/checkout@v4
@@ -58,6 +59,12 @@ jobs:
       # (build + lint), so the publish path keeps its own gate.
       - run: npm ci --ignore-scripts
       - run: npm run build
-      - run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      # No NODE_AUTH_TOKEN and no --provenance flag on purpose. This package has a
+      # trusted publisher configured on npm (GitHub Actions -> Saturation-IO/
+      # n8n-nodes-saturation, publish.yml), so the `id-token: write` permission
+      # above is the whole credential: npm verifies this workflow's OIDC identity
+      # and generates the provenance attestation itself.
+      #
+      # Keeping a token here would mean the release pipeline still depended on a
+      # secret that expires, and on one person's npm account. It does not.
+      - run: npm publish --access public
