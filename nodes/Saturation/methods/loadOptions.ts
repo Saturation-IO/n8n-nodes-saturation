@@ -9,7 +9,7 @@ async function fetchCollection(
 	qs: Record<string, string | number> = {},
 ): Promise<Array<Record<string, unknown>>> {
 	const credentials = await context.getCredentials('saturationApi');
-	const baseUrl = (credentials.baseUrl as string) || 'https://api.saturation.io/v1';
+	const baseUrl = (credentials.baseUrl as string) || 'https://next-api.saturation.io/v1';
 	const response = (await context.helpers.httpRequestWithAuthentication.call(
 		context,
 		'saturationApi',

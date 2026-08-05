@@ -38,7 +38,7 @@ const WEBHOOK_EVENTS: INodePropertyOptions[] = [
 ];
 
 function getBaseUrl(credentials: IDataObject): string {
-	return (credentials.baseUrl as string) || 'https://api.saturation.io/v1';
+	return (credentials.baseUrl as string) || 'https://next-api.saturation.io/v1';
 }
 
 // Replay-tolerance window for inbound deliveries (seconds). Mirrors the

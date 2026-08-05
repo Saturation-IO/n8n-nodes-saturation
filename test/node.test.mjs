@@ -206,3 +206,33 @@ describe('node icon', () => {
     );
   });
 });
+
+describe('API host', () => {
+	// `api.saturation.io` has no /v1 routes: probing it returns 404 while
+	// next-api returns 401. A credential defaulting there can never pass its own
+	// connection test, and it shipped that way in 1.0.0-1.0.7 -- only surfacing
+	// when someone actually tried to connect. Pins the default and both fallbacks.
+	const legacy = /(?<!next-)api\.saturation\.io/;
+
+	it('defaults the credential Base URL to next-api', () => {
+		const cred = new SaturationApi();
+		const baseUrl = cred.properties.find((p) => p.name === 'baseUrl');
+		expect(baseUrl.default).toBe('https://next-api.saturation.io/v1');
+	});
+
+	it('never falls back to the legacy apex anywhere in source', () => {
+		const files = [
+			'credentials/SaturationApi.credentials.ts',
+			'nodes/Saturation/methods/loadOptions.ts',
+			'nodes/SaturationTrigger/SaturationTrigger.node.ts',
+		];
+		// Comments are stripped first: the fix's own comment names the bad host to
+		// explain why it is wrong, and a check that trips on prose would be noise.
+		const code = (f) =>
+			readFileSync(f, 'utf8')
+				.replace(/\/\*[\s\S]*?\*\//g, '')
+				.replace(/^\s*\/\/.*$/gm, '');
+		const offenders = files.filter((f) => legacy.test(code(f)));
+		expect(offenders, `legacy apex referenced in: ${offenders.join(', ')}`).toEqual([]);
+	});
+});

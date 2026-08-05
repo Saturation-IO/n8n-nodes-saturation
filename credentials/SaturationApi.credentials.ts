@@ -42,7 +42,11 @@ export class SaturationApi implements ICredentialType {
 			displayName: 'Base URL',
 			name: 'baseUrl',
 			type: 'string',
-			default: 'https://api.saturation.io/v1',
+			// next-api, NOT the legacy apex. `api.saturation.io/v1/me` 404s -- that host
+			// serves the old /api/v1 stack and has no /v1 routes at all -- so every
+			// install shipped a credential whose connection test could never pass.
+			// Verified by probe: api 404, next-api 401 (route present, wants auth).
+			default: 'https://next-api.saturation.io/v1',
 			description:
 				'Leave as-is for production. Override only for a sandbox or self-hosted edge (e.g. http://localhost:4300/v1).',
 		},
