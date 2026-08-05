@@ -1,9 +1,11 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 
 import {
+	NodeApiError,
 	NodeConnectionTypes,
 	NodeOperationError,
 	type IDataObject,
+	type JsonObject,
 	type IHookFunctions,
 	type INodePropertyOptions,
 	type INodeType,
@@ -257,7 +259,9 @@ export class SaturationTrigger implements INodeType {
 					const status = (error as { httpCode?: string; statusCode?: number })?.statusCode
 						?? Number((error as { httpCode?: string })?.httpCode);
 					if (status !== 404) {
-						throw error;
+						// Wrapped, not re-thrown raw, so n8n renders it as a node error
+						// with the API's own message attached rather than a bare stack.
+						throw new NodeApiError(this.getNode(), error as JsonObject);
 					}
 				}
 				delete webhookData.webhookId;
