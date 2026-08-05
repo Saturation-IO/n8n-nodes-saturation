@@ -46,10 +46,15 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v4
+      # NO registry-url here, deliberately. Passing it makes setup-node write an
+      # .npmrc containing `//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}`.
+      # With no token in the environment npm then authenticates as nobody rather
+      # than falling back to OIDC, and the registry answers `404 Not Found - PUT`.
+      # That is how 1.0.5 failed, with npm 11.19.0 installed and the trusted
+      # publisher correctly configured -- the stray .npmrc was the whole problem.
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-          registry-url: 'https://registry.npmjs.org'
       # Node 20 bundles npm 10.8.2, and OIDC trusted publishing needs npm >= 11.5.1.
       # Without a newer npm the publish step sends no credential at all and the
       # registry answers `404 Not Found - PUT`, which reads like a missing package
