@@ -50,6 +50,12 @@ jobs:
         with:
           node-version: '20'
           registry-url: 'https://registry.npmjs.org'
+      # Node 20 bundles npm 10, and OIDC trusted publishing needs npm >= 11.5.1.
+      # Without this the publish step sends no credential at all and the registry
+      # answers `404 Not Found - PUT`, which reads like a missing package rather
+      # than an auth failure. That is exactly how 1.0.3 failed.
+      - run: npm install -g npm@latest
+      - run: npm -v
       # --ignore-scripts skips dependency BUILD scripts, not ours. n8n-workflow pulls
       # @n8n/expression-runtime -> isolated-vm, a native module that fails to compile
       # on the runner's Node 20 (it only installed locally because Node 22 had a
