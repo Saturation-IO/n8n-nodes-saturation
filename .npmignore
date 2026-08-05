@@ -1,0 +1,14 @@
+# Source and tooling are not published; only the compiled dist/ ships.
+.github
+.vscode
+test
+nodes
+credentials
+*.ts
+tsconfig.json
+tsconfig.tsbuildinfo
+gulpfile.js
+.eslintrc.js
+.prettierrc.js
+.editorconfig
+.gitignore

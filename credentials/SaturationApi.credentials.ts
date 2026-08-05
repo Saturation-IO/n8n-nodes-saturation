@@ -1,0 +1,64 @@
+import type {
+	IAuthenticateGeneric,
+	ICredentialTestRequest,
+	ICredentialType,
+	INodeProperties,
+} from 'n8n-workflow';
+
+// Saturation API credential. A Saturation API token (a JWT) authenticates as a
+// user (or a workspace service identity) and inherits that principal's live
+// permissions. The token is injected as `Authorization: Bearer <token>` on
+// every request (securityScheme `bearerAuth` in the OpenAPI), and verified by
+// the credential test which calls `GET /v1/me`.
+export class SaturationApi implements ICredentialType {
+	name = 'saturationApi';
+
+	displayName = 'Saturation API';
+
+	// The rule below camelCases the VALUE, assuming n8n's first-party convention of a
+	// doc slug ('airtable') that resolves inside n8n's own docs site. This is a community
+	// node pointing at our own docs, so autofixing rewrites the URL to the nonsense
+	// 'httpsDocsSaturationIo'. Disabled rather than renamed.
+	// eslint-disable-next-line n8n-nodes-base/cred-class-field-documentation-url-miscased
+	documentationUrl = 'https://docs.saturation.io';
+
+	properties: INodeProperties[] = [
+		{
+			displayName: 'API Token',
+			name: 'apiToken',
+			type: 'string',
+			typeOptions: { password: true },
+			default: '',
+			required: true,
+			description:
+				'Your Saturation API token (a JWT). Mint one in Saturation under Settings → API Tokens.',
+		},
+		{
+			displayName: 'Base URL',
+			name: 'baseUrl',
+			type: 'string',
+			default: 'https://api.saturation.io/v1',
+			description:
+				'Leave as-is for production. Override only for a sandbox or self-hosted edge (e.g. http://localhost:4300/v1).',
+		},
+	];
+
+	// Inject the Bearer token on every request that uses this credential.
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
+		properties: {
+			headers: {
+				Authorization: '=Bearer {{$credentials.apiToken}}',
+			},
+		},
+	};
+
+	// Credential test: GET /v1/me — the auth-probe every integration makes.
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: '={{$credentials.baseUrl}}',
+			url: '/me',
+			method: 'GET',
+		},
+	};
+}
