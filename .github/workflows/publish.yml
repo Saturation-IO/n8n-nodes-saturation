@@ -22,7 +22,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - run: npm ci
+      # --ignore-scripts skips dependency BUILD scripts, not ours. n8n-workflow pulls
+      # @n8n/expression-runtime -> isolated-vm, a native module that fails to compile
+      # on the runner's Node 20 (it only installed locally because Node 22 had a
+      # prebuilt binary). This package has zero runtime dependencies and never
+      # executes n8n's expression VM, so compiling it is pure cost and a CI failure
+      # we would be chasing forever. `npm publish` still runs prepublishOnly
+      # (build + lint), so the publish path keeps its own gate.
+      - run: npm ci --ignore-scripts
       - run: npm run build
       - run: npm run lint
       - run: npm test
@@ -42,7 +49,14 @@ jobs:
         with:
           node-version: '20'
           registry-url: 'https://registry.npmjs.org'
-      - run: npm ci
+      # --ignore-scripts skips dependency BUILD scripts, not ours. n8n-workflow pulls
+      # @n8n/expression-runtime -> isolated-vm, a native module that fails to compile
+      # on the runner's Node 20 (it only installed locally because Node 22 had a
+      # prebuilt binary). This package has zero runtime dependencies and never
+      # executes n8n's expression VM, so compiling it is pure cost and a CI failure
+      # we would be chasing forever. `npm publish` still runs prepublishOnly
+      # (build + lint), so the publish path keeps its own gate.
+      - run: npm ci --ignore-scripts
       - run: npm run build
       - run: npm publish --provenance --access public
         env:
