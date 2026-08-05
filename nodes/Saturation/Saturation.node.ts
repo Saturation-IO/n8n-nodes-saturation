@@ -1,4 +1,4 @@
-import { type INodeType, type INodeTypeDescription } from 'n8n-workflow';
+import { NodeConnectionTypes, type INodeType, type INodeTypeDescription } from 'n8n-workflow';
 
 import { resourceProperty } from './descriptions/Common';
 import { transactionOperations, transactionFields } from './descriptions/TransactionDescription';
@@ -16,7 +16,8 @@ export class Saturation implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Saturation',
 		name: 'saturation',
-		icon: 'file:saturation.svg',
+		// Themed pair so the mark keeps contrast in both n8n themes.
+		icon: { light: 'file:saturation.svg', dark: 'file:saturation.dark.svg' },
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -24,8 +25,11 @@ export class Saturation implements INodeType {
 		defaults: {
 			name: 'Saturation',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
+		// Every operation here is a discrete read or write against the Saturation
+		// API, which is exactly what an AI agent should be able to call.
+		usableAsTool: true,
 		credentials: [
 			{
 				name: 'saturationApi',

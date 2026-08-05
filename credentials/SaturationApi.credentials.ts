@@ -1,5 +1,6 @@
 import type {
 	IAuthenticateGeneric,
+	Icon,
 	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
@@ -14,6 +15,10 @@ export class SaturationApi implements ICredentialType {
 	name = 'saturationApi';
 
 	displayName = 'Saturation API';
+
+	// Themed pair: the light-theme icon is the dark tile, and vice versa, so the
+	// mark keeps contrast against whichever background n8n renders behind it.
+	icon: Icon = { light: 'file:saturation.svg', dark: 'file:saturation.dark.svg' };
 
 	// The rule below camelCases the VALUE, assuming n8n's first-party convention of a
 	// doc slug ('airtable') that resolves inside n8n's own docs site. This is a community

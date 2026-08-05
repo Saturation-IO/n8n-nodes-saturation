@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 
 import {
+	NodeConnectionTypes,
 	NodeOperationError,
 	type IDataObject,
 	type IHookFunctions,
@@ -103,7 +104,8 @@ export class SaturationTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Saturation Trigger',
 		name: 'saturationTrigger',
-		icon: 'file:saturation.svg',
+		// Themed pair so the mark keeps contrast in both n8n themes.
+		icon: { light: 'file:saturation.svg', dark: 'file:saturation.dark.svg' },
 		group: ['trigger'],
 		version: 1,
 		subtitle: '={{$parameter["events"].join(", ")}}',
@@ -112,7 +114,13 @@ export class SaturationTrigger implements INodeType {
 			name: 'Saturation Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionTypes.Main],
+		// n8n's type only accepts `true` (or omission) -- there is no way to declare
+		// "not a tool" -- and the verification scan requires the property to be
+		// present. So `true` it is, which is also what n8n's own rule advises. In
+		// practice a webhook trigger is started by Saturation pushing an event, not
+		// by a tool call, so this changes nothing about how it runs.
+		usableAsTool: true,
 		credentials: [
 			{
 				name: 'saturationApi',
@@ -240,8 +248,17 @@ export class SaturationTrigger implements INodeType {
 						url: `/webhooks/${webhookData.webhookId}`,
 						json: true,
 					});
-				} catch {
-					// Idempotent: deleting an already-deleted subscription is a 404/204.
+				} catch (error) {
+					// A 404 means the subscription is already gone, which is the
+					// outcome we wanted, so treat it as success. Anything else -- a
+					// 500, an auth failure, a network fault -- must surface: the lines
+					// below drop the webhook id, so swallowing a real failure leaves a
+					// live subscription on the server that nothing can ever delete.
+					const status = (error as { httpCode?: string; statusCode?: number })?.statusCode
+						?? Number((error as { httpCode?: string })?.httpCode);
+					if (status !== 404) {
+						throw error;
+					}
 				}
 				delete webhookData.webhookId;
 				delete webhookData.secret;

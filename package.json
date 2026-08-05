@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-saturation",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "n8n community node for the Saturation API (/v1) \u2014 production-finance data: transactions, budgets, purchase orders, documents and the Library.",
   "keywords": [
     "n8n-community-node-package",
@@ -12,6 +12,7 @@
   "homepage": "https://github.com/Saturation-IO/n8n-nodes-saturation#readme",
   "author": {
     "name": "Saturation.io, Inc.",
+    "email": "hello@saturation.io",
     "url": "https://saturation.io"
   },
   "repository": {
