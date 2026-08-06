@@ -58,7 +58,7 @@ describe('Saturation action node', () => {
 
 	it('provides the project/contact/rate-pack dropdowns', () => {
 		expect(Object.keys(node.methods.loadOptions).sort()).toEqual(
-			['listContacts', 'listProjects', 'listRatePacks'].sort(),
+			['listContacts', 'listProjects', 'listProjectsWithAll', 'listRatePacks'].sort(),
 		);
 	});
 
@@ -271,5 +271,29 @@ describe('transaction list project filter', () => {
 
 	it('still sends the project when one is chosen', () => {
 		expect(sentQuery(filter(), 'prj_abc123')).toEqual({ projectId: 'prj_abc123' });
+	});
+});
+
+// n8n renders an `options` parameter whose current value is not in the loaded
+// list as invalid — red border and warning icon — so the optional project
+// filter looked broken at its own default, on a call that had succeeded. The
+// dropdown has to offer the empty value the property defaults to.
+describe('optional project filter dropdown', () => {
+	const node = new Saturation();
+	const filter = node.description.properties.find(
+		(p) => p.name === 'projectId' && p.required !== true,
+	);
+
+	it('loads a list that includes the default (no filter) value', () => {
+		expect(filter.default).toBe('');
+		expect(filter.typeOptions.loadOptionsMethod).toBe('listProjectsWithAll');
+		expect(Object.keys(node.methods.loadOptions)).toContain('listProjectsWithAll');
+	});
+
+	it('keeps the required picker on the plain project list', () => {
+		const required = node.description.properties.find(
+			(p) => p.name === 'projectId' && p.required === true,
+		);
+		expect(required.typeOptions.loadOptionsMethod).toBe('listProjects');
 	});
 });

@@ -5,7 +5,12 @@ import { transactionOperations, transactionFields } from './descriptions/Transac
 import { documentOperations, documentFields } from './descriptions/DocumentDescription';
 import { libraryOperations, libraryFields } from './descriptions/LibraryDescription';
 import { searchOperations, searchFields } from './descriptions/SearchDescription';
-import { listProjects, listContacts, listRatePacks } from './methods/loadOptions';
+import {
+	listProjects,
+	listProjectsWithAll,
+	listContacts,
+	listRatePacks,
+} from './methods/loadOptions';
 
 // Declarative Saturation node. Every operation is HTTP-routing onto the
 // Saturation API (/v1); the resource/operation map mirrors the OpenAPI
@@ -58,6 +63,7 @@ export class Saturation implements INodeType {
 	methods = {
 		loadOptions: {
 			listProjects,
+			listProjectsWithAll,
 			listContacts,
 			listRatePacks,
 		},

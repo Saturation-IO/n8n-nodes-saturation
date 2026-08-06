@@ -36,6 +36,19 @@ export async function listProjects(this: ILoadOptionsFunctions): Promise<INodePr
 	}));
 }
 
+// Project dropdown for the optional list filter. n8n renders an `options`
+// parameter whose value is absent from the list as an invalid field — red
+// border, warning icon — so the unfiltered default looked broken even when the
+// call succeeded. A leading entry makes "no filter" a real choice.
+export async function listProjectsWithAll(
+	this: ILoadOptionsFunctions,
+): Promise<INodePropertyOptions[]> {
+	return [
+		{ name: 'All Projects', value: '', description: 'List across the whole workspace' },
+		...(await listProjects.call(this)),
+	];
+}
+
 // Contact dropdown — GET /v1/contacts.
 export async function listContacts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	const rows = await fetchCollection(this, '/contacts');

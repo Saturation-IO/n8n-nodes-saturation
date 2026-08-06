@@ -36,8 +36,11 @@ export const projectIdProperty: INodeProperties = {
 export const projectIdFilterProperty: INodeProperties = {
 	...projectIdProperty,
 	required: false,
+	// "All Projects" is a real, selectable entry, so leaving the filter alone is
+	// a valid value rather than n8n's red invalid-options state.
+	typeOptions: { loadOptionsMethod: 'listProjectsWithAll' },
 	description:
-		'Optional project filter. Leave empty to list across the whole workspace, or choose a project to scope the read. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+		'Optional project filter. Choose All Projects to list across the whole workspace, or a project to scope the read. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 };
 
 // Routing for an always-displayed optional query parameter. n8n's declarative
