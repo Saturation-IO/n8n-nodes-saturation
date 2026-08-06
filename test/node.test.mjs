@@ -236,3 +236,40 @@ describe('API host', () => {
 		expect(offenders, `legacy apex referenced in: ${offenders.join(', ')}`).toEqual([]);
 	});
 });
+
+// n8n's declarative router writes every routed property into the request
+// unconditionally (`routing-node.js`: `returnData.options.qs[propertyName] =
+// value`), so an always-displayed optional picker left empty still ships
+// `?projectId=`. The API resolves a named project filter and 404s when it does
+// not exist, so the empty string asked for a project called "" and every
+// unfiltered `transaction: getAll` — the operation's documented default — came
+// back "The resource you are requesting could not be found".
+describe('transaction list project filter', () => {
+	// The same two steps the router takes for a routed property.
+	const sentQuery = (property, paramValue) => {
+		let value = paramValue;
+		if (property.routing.send.value) {
+			const body = property.routing.send.value.replace(/^=\{\{([\s\S]*)\}\}$/, '$1');
+			value = new Function('$value', `return (${body})`)(paramValue);
+		}
+		const qs = { [property.routing.send.property]: value };
+		// axios drops undefined params at serialization; anything else is sent.
+		return Object.fromEntries(Object.entries(qs).filter(([, v]) => v !== undefined));
+	};
+
+	const filter = () =>
+		new Saturation().description.properties.find(
+			(p) =>
+				p.name === 'projectId' &&
+				p.displayOptions?.show?.operation?.includes('getAll') &&
+				p.routing?.send?.type === 'query',
+		);
+
+	it('omits projectId entirely when the picker is left empty', () => {
+		expect(sentQuery(filter(), '')).toEqual({});
+	});
+
+	it('still sends the project when one is chosen', () => {
+		expect(sentQuery(filter(), 'prj_abc123')).toEqual({ projectId: 'prj_abc123' });
+	});
+});

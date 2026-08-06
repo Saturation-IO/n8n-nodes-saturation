@@ -1,6 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import { projectIdFilterProperty, projectIdProperty } from './Common';
+import { optionalQueryRouting, projectIdFilterProperty, projectIdProperty } from './Common';
 
 const show = { resource: ['transaction'] };
 
@@ -58,11 +58,11 @@ export const transactionFields: INodeProperties[] = [
 		routing: { send: { type: 'body', property: 'projectId' } },
 	},
 	// List takes projectId as an optional query filter (absent = whole
-	// workspace).
+	// workspace), so it must not be sent when the picker is left empty.
 	{
 		...projectIdFilterProperty,
 		displayOptions: { show: { ...show, operation: ['getAll'] } },
-		routing: { send: { type: 'query', property: 'projectId' } },
+		routing: optionalQueryRouting('projectId'),
 	},
 
 	// --- create ---

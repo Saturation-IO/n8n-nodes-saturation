@@ -1,7 +1,7 @@
 {
   "name": "n8n-nodes-saturation",
-  "version": "1.0.8",
-  "description": "n8n community node for the Saturation API (/v1) \u2014 production-finance data: transactions, budgets, purchase orders, documents and the Library.",
+  "version": "1.0.9",
+  "description": "n8n community node for the Saturation API (/v1) — production-finance data: transactions, budgets, purchase orders, documents and the Library.",
   "keywords": [
     "n8n-community-node-package",
     "saturation",

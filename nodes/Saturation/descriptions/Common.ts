@@ -39,3 +39,12 @@ export const projectIdFilterProperty: INodeProperties = {
 	description:
 		'Optional project filter. Leave empty to list across the whole workspace, or choose a project to scope the read. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 };
+
+// Routing for an always-displayed optional query parameter. n8n's declarative
+// router writes the property into the query string unconditionally, so a
+// left-empty picker sends `?projectId=` — and the API then resolves a project
+// named "" and answers 404, breaking the documented "leave empty for the whole
+// workspace" path. Yielding `undefined` drops the key at serialization.
+export const optionalQueryRouting = (property: string) => ({
+	send: { type: 'query' as const, property, value: '={{ $value || undefined }}' },
+});
