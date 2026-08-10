@@ -1,123 +1,103 @@
-# n8n-nodes-saturation
+# Saturation for n8n
 
-This is an [n8n](https://n8n.io) community node. It lets you use the
-[Saturation](https://saturation.io) Public API (`/v1`) in your n8n workflows —
-production-finance data: transactions, budgets, purchase orders, documents and
-the Library.
+[![npm version](https://img.shields.io/npm/v/n8n-nodes-saturation)](https://www.npmjs.com/package/n8n-nodes-saturation)
+[![CI](https://github.com/Saturation-IO/n8n-nodes-saturation/actions/workflows/publish.yml/badge.svg)](https://github.com/Saturation-IO/n8n-nodes-saturation/actions/workflows/publish.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-The node is built from and conforms to the single Saturation API OpenAPI
-3.1 contract (`docs/next/next-api-build/openapi/openapi.yaml`). Every endpoint,
-event name and field is derived from that document.
+Use Saturation production finance data in n8n workflows. The package includes:
 
-[Installation](#installation) ·
-[Credentials](#credentials) ·
-[Operations](#operations) ·
-[Trigger](#trigger) ·
-[Development](#development)
+- **Saturation**, for reading and writing transactions, documents, Library data, and search
+- **Saturation Trigger**, for starting a workflow when a supported Saturation event occurs
 
-## Installation
+[Install](#install) | [Connect](#connect-saturation) | [Try a workflow](#try-a-workflow) | [Supported operations](#supported-operations) | [Develop](#develop)
 
-Follow the
-[community nodes installation guide](https://docs.n8n.io/integrations/community-nodes/installation/).
-In a self-hosted n8n, go to **Settings → Community Nodes**, install
-`n8n-nodes-saturation`.
+## Install
 
-## Credentials
+This package is available from [npm](https://www.npmjs.com/package/n8n-nodes-saturation).
 
-You need a **Saturation API token** (a JWT). Mint one in Saturation under
-**Settings → API Tokens**. The token acts as you (or a workspace service
-identity) and inherits your live permissions.
+On a self-hosted n8n instance:
 
-The `Saturation API` credential injects `Authorization: Bearer <token>` on every
-request and is verified against **`GET /v1/me`**. For a sandbox or self-hosted
-edge, set the **Base URL** field (default `https://api.saturation.io/v1`).
+1. Open **Settings > Community Nodes**.
+2. Select **Install**.
+3. Enter `n8n-nodes-saturation`.
+4. Review the community-node warning, then select **Install**.
 
-## Operations
+See n8n's [community-node installation guide](https://docs.n8n.io/integrations/community-nodes/installation-and-management/gui-installation/) for role and deployment requirements.
 
-The **Saturation** node is a declarative node: every operation is HTTP-routing
-onto a `/v1` endpoint. Unsafe writes set an `Idempotency-Key` header
-(`n8n-{executionId}-{itemIndex}`) so a re-run produces exactly one row.
+Unverified community nodes are available on self-hosted n8n only. The package will become available on n8n Cloud after n8n approves it through the Creator Portal.
 
-| Resource | Operation | Endpoint |
-|---|---|---|
-| Transaction | Create | `POST …/transactions` |
-| Transaction | Get Many | `GET …/transactions` (full filter grammar) |
-| Document | Assign | `POST …/documents/{id}/assign` |
-| Document | Get Many | `GET …/documents` |
-| Library | Install Rate Pack | `POST …/library/rates/{packId}/add` |
-| Library | Add Incentive | `POST …/library/incentives/add` |
-| Search | Spotlight | `GET …/search` |
+## Connect Saturation
 
-Project, contact and rate-pack fields are populated by live load-option calls
-(`GET /v1/projects`, `…/contacts`, `…/library/rates`), permission-filtered to
-the token's reach. The workspace is the API token's workspace (a token is bound
-to exactly one workspace), so no workspace field or path segment exists.
+1. In Saturation, open **Settings > API Tokens** and create a personal API token.
+2. In n8n, create a **Saturation API** credential.
+3. Paste the token into **API Token**.
+4. Leave **Base URL** set to `https://next-api.saturation.io/v1` for production.
+5. Save the credential. n8n checks it with `GET /me`.
 
-Money is always an integer count of minor units plus an ISO-4217 currency
-(`50000` + `USD` means $500.00) — never a float.
+Treat the token as a secret. It carries the permissions of its Saturation user or service identity and is bound to one workspace.
 
-> Dropping a new document is a `multipart/form-data` upload; use the core
-> **HTTP Request** node (with the Saturation credential) against
-> `POST …/documents` for that, then use this node's **Assign** operation. The
-> trigger and all other operations are first-class here.
+## Try a workflow
 
-## Trigger
+To list recent transactions:
 
-The **Saturation Trigger** node registers an outbound webhook against the
-Saturation Webhook API and tears it down across the workflow lifecycle:
+1. Add a **Saturation** node to a workflow.
+2. Select **Transaction** as the resource.
+3. Select **Get Many** as the operation.
+4. Choose **All Projects**, or select one project.
+5. Attach your Saturation credential and run the node.
 
-- **create** → `POST /v1/webhooks` with `{url, events[], projectId?}`
-- **checkExists** → `GET …/webhooks/{id}`
-- **delete** → `DELETE …/webhooks/{id}`
+The API returns money as an integer number of minor units plus an ISO 4217 currency code. For example, `50000` with `USD` means $500.00.
 
-Pick one or more events from the closed enum:
-`transaction.created|updated`, `budget.changed`,
-`purchaseOrder.created|pending|approved|rejected|actualizing|paid|void`,
-`document.created|assigned|unassigned|deleted`, `incentive.added`,
-`pack.installed|uninstalled`. The purchase-order suffix is the exact status the
-PO entered (flow-derived, read-only) — there is no submitted/approve/pay event.
+## Supported operations
 
-Deliveries are HMAC-signed (`X-Saturation-Signature`); the signing secret is
-returned exactly once at create and stashed in the node's static data.
+| Resource    | Operation         | API request                                             |
+| ----------- | ----------------- | ------------------------------------------------------- |
+| Transaction | Create            | `POST /transactions`                                    |
+| Transaction | Get Many          | `GET /transactions`                                     |
+| Document    | Assign            | `POST /documents/{documentId}/assign`                   |
+| Document    | Get Many          | `GET /documents`                                        |
+| Library     | Install Rate Pack | `POST /projects/{projectId}/library/rates/{packId}/add` |
+| Library     | Add Incentive     | `POST /projects/{projectId}/library/incentives/add`     |
+| Search      | Spotlight         | `GET /search`                                           |
 
-Every delivery is the **thin** envelope — `{id, event, entityId, kind,
-occurredAt}` — and your workflow re-fetches what it needs, which re-checks
-permissions on the way back in. The API also accepts a `full` payload style,
-but v1 delivers the thin body for those subscriptions too: inlining the
-permission-projected object needs a per-entity projection service that has not
-shipped. The node therefore does not offer the choice, rather than let you pick
-an option the server will not honor.
+Write operations send an `Idempotency-Key` based on the n8n execution and input item. Requests that reuse that key and body do not create a second record. A new workflow execution receives a new key.
 
-## Development
+Document upload is not yet a first-class operation. Use n8n's **HTTP Request** node with the Saturation credential to call `POST /documents`, then use **Document > Assign**.
+
+## Trigger workflows
+
+The **Saturation Trigger** node registers and removes a webhook with the workflow lifecycle. It supports transaction, budget, purchase-order, document, incentive, and rate-pack events.
+
+Each delivery contains a compact event envelope with the entity ID. Add a Saturation action node after the trigger to fetch the current record. The trigger verifies the delivery's HMAC signature and rejects missing, invalid, or stale signatures.
+
+Budget and purchase-order support is currently trigger-only. The Saturation action node does not yet read or write those resources.
+
+## Documentation
+
+- [Saturation API documentation](https://docs.saturation.io)
+- [OpenAPI contract](https://docs.saturation.io/openapi.yaml)
+- [Agent documentation map](https://docs.saturation.io/llms.txt)
+- [n8n community-node documentation](https://docs.n8n.io/integrations/community-nodes/)
+
+## Develop
+
+Use Node.js 20 or later.
 
 ```bash
-cd apps-next/next-api/integrations/n8n-nodes-saturation
-npm install
-npm run build       # tsc + copy icons into dist/
-npm run lint        # eslint with eslint-plugin-n8n-nodes-base
-npm run scan        # npx @n8n/scan-community-package n8n-nodes-saturation
+git clone https://github.com/Saturation-IO/n8n-nodes-saturation.git
+cd n8n-nodes-saturation
+npm ci --ignore-scripts
+npm run build
+npm run lint
+npm test
 ```
 
-Smoke against a sandbox edge (4300 block, never 4000/4001/4003/4048 or
-4094-4099):
+`npm run scan` checks the latest published package with n8n's community-package scanner. See [CONTRIBUTING.md](CONTRIBUTING.md) for the source checks and release process.
 
-```bash
-npm run dev         # tsc --watch
-# In a linked n8n instance, add a Saturation credential pointing at
-# http://localhost:4300/v1 and run a workflow.
-```
+## Support
 
-### Publishing
-
-Publishing to npm is done out-of-band by a maintainer via the GitHub Actions
-workflow (`.github/workflows/publish.yml`), which builds, lints, scans, and runs
-`npm publish --provenance` (OIDC). Directory listing and verification-queue
-review are a human, n8n-side step.
-
-## Compatibility
-
-Requires n8n with `n8nNodesApiVersion: 1`. Node.js ≥ 18.17.
+Open a [GitHub issue](https://github.com/Saturation-IO/n8n-nodes-saturation/issues) for reproducible bugs and feature requests. Report security issues through [GitHub private vulnerability reporting](https://github.com/Saturation-IO/n8n-nodes-saturation/security/advisories/new).
 
 ## License
 
-MIT
+[MIT](LICENSE)

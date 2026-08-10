@@ -1,0 +1,48 @@
+name: Bug report
+description: Report reproducible behavior in the Saturation nodes
+title: '[Bug]: '
+labels:
+  - bug
+body:
+  - type: input
+    id: package-version
+    attributes:
+      label: Package version
+      placeholder: 1.0.10
+    validations:
+      required: true
+  - type: input
+    id: n8n-version
+    attributes:
+      label: n8n version
+    validations:
+      required: true
+  - type: dropdown
+    id: node
+    attributes:
+      label: Node
+      options:
+        - Saturation
+        - Saturation Trigger
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: What happened?
+      description: Include the selected resource and operation, the response code, and a redacted error message.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+      description: Remove API tokens and private production data before posting.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true

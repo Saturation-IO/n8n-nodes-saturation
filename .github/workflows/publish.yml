@@ -33,6 +33,7 @@ jobs:
       - run: npm run build
       - run: npm run lint
       - run: npm test
+      - run: npm pack --dry-run
 
   publish:
     # Only on a published release, and only after verify is green.

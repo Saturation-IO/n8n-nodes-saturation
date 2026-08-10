@@ -6,7 +6,7 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-// Saturation API credential. A Saturation API token (a JWT) authenticates as a
+// Saturation API credential. A personal API token authenticates as a
 // user (or a workspace service identity) and inherits that principal's live
 // permissions. The token is injected as `Authorization: Bearer <token>` on
 // every request (securityScheme `bearerAuth` in the OpenAPI), and verified by
@@ -35,8 +35,7 @@ export class SaturationApi implements ICredentialType {
 			typeOptions: { password: true },
 			default: '',
 			required: true,
-			description:
-				'Your Saturation API token (a JWT). Mint one in Saturation under Settings → API Tokens.',
+			description: 'Your personal API token. Create one in Saturation under Settings > API Tokens.',
 		},
 		{
 			displayName: 'Base URL',

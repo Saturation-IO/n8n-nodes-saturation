@@ -189,10 +189,20 @@ export class SaturationTrigger implements INodeType {
 						json: true,
 					});
 					return true;
-				} catch {
-					// 404 not_found => the subscription no longer exists; recreate it.
-					delete webhookData.webhookId;
-					return false;
+				} catch (error) {
+					const status =
+						(error as { httpCode?: string; statusCode?: number })?.statusCode ??
+						Number((error as { httpCode?: string })?.httpCode);
+					if (status === 404) {
+						// The subscription no longer exists. Clear all state so n8n can recreate it.
+						delete webhookData.webhookId;
+						delete webhookData.secret;
+						return false;
+					}
+					// Auth, server, and network failures do not prove that the
+					// subscription is gone. Surface them instead of attempting a
+					// duplicate create.
+					throw new NodeApiError(this.getNode(), error as JsonObject);
 				}
 			},
 
@@ -256,8 +266,9 @@ export class SaturationTrigger implements INodeType {
 					// 500, an auth failure, a network fault -- must surface: the lines
 					// below drop the webhook id, so swallowing a real failure leaves a
 					// live subscription on the server that nothing can ever delete.
-					const status = (error as { httpCode?: string; statusCode?: number })?.statusCode
-						?? Number((error as { httpCode?: string })?.httpCode);
+					const status =
+						(error as { httpCode?: string; statusCode?: number })?.statusCode ??
+						Number((error as { httpCode?: string })?.httpCode);
 					if (status !== 404) {
 						// Wrapped, not re-thrown raw, so n8n renders it as a node error
 						// with the API's own message attached rather than a bare stack.
