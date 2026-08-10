@@ -169,8 +169,8 @@ describe('SaturationTrigger node', () => {
 //
 // The regression: the rate-pack operation posted to
 // `/library/rates/{packId}/install`, but the route is `/add`
-// (apps-next/next-api/src/routes/v1/library/index.ts). It 404'd on every call
-// and nothing caught it — the node's URLs were never checked against the API
+// in the public OpenAPI contract. It returned 404 on every call
+// and nothing caught it. The node's URLs were never checked against the API
 // they target, so a typo in a template string was indistinguishable from a
 // working integration until someone ran it.
 //
@@ -212,7 +212,7 @@ describe('Saturation action node endpoints', () => {
 			const path = normalize(url);
 			expect(
 				KNOWN_V1_PATHS.has(path),
-				`"${path}" is not a known /v1 path — check apps-next/next-api/src/routes/v1 before adding it here`,
+				`"${path}" is not a known /v1 path. Check the public OpenAPI contract before adding it here.`,
 			).toBe(true);
 		}
 	});

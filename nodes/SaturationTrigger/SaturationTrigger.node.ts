@@ -155,20 +155,8 @@ export class SaturationTrigger implements INodeType {
 				description:
 					'Optional. Narrow the subscription to a single project (prj_…). Leave blank for every project you can read in the workspace.',
 			},
-			// No Payload Style option: v1 delivers the THIN envelope for every
-			// subscription. The server accepts `payloadStyle: 'full'` but
-			// documents that those subscriptions "also receive the thin body for
-			// now — the CASL-projected object inline requires the per-entity
-			// projection service, deferred with this loud note rather than
-			// shipping an unprojected (permission-leaking) object"
-			// (apps-next/next-api/src/jobs/webhook-delivery.ts:37-41).
-			//
-			// Offering the choice therefore lied to the user: picking "Full"
-			// still delivered an id-only envelope, and every downstream node
-			// reading inline fields got undefined. The Zapier factory hardcodes
-			// `thin` for the same reason ("do not request what won't be
-			// honored"). Re-add this option in BOTH integrations when the
-			// projection service ships.
+			// The node requests the compact envelope supported by the integration.
+			// A following Saturation action fetches the current, permission-checked record.
 		],
 	};
 
@@ -213,9 +201,7 @@ export class SaturationTrigger implements INodeType {
 				const credentials = await this.getCredentials('saturationApi');
 				const baseUrl = getBaseUrl(credentials);
 
-				// Always thin: v1 delivers the id-only envelope regardless, so
-				// requesting `full` would only misrepresent what arrives. See the
-				// Payload Style note on the properties list above.
+				// Keep delivery payloads compact. A following action can fetch the record.
 				const body: IDataObject = { url: webhookUrl, events, payloadStyle: 'thin' };
 				if (projectId) {
 					body.projectId = projectId;
