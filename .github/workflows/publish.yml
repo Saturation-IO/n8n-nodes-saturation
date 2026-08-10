@@ -14,12 +14,19 @@ on:
   release:
     types: [published]
 
+permissions:
+  contents: read
+
 jobs:
   verify:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '20'
       # --ignore-scripts skips dependency BUILD scripts, not ours. n8n-workflow pulls
@@ -30,32 +37,49 @@ jobs:
       # we would be chasing forever. `npm publish` still runs prepublishOnly
       # (build + lint), so the publish path keeps its own gate.
       - run: npm ci --ignore-scripts
+      - name: Scan Git history for secrets
+        run: >-
+          docker run --rm
+          -v "${GITHUB_WORKSPACE}:/repo:ro"
+          zricethezav/gitleaks@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f
+          detect --source /repo --log-opts=--all --redact --no-banner
       - run: npm run build
       - run: npm run lint
       - run: npm test
+      - run: npm audit
       - run: npm pack --dry-run
 
   publish:
     # Only on a published release, and only after verify is green.
     needs: verify
-    if: github.event_name == 'release'
+    if: github.event_name == 'release' && github.event.release.prerelease == false
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
       # The entire publish credential. npm matches this OIDC token against the
       # package's trusted-publisher config; without it, publishing fails.
       id-token: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
       # NO registry-url here, deliberately. Passing it makes setup-node write an
       # .npmrc containing `//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}`.
       # With no token in the environment npm then authenticates as nobody rather
       # than falling back to OIDC, and the registry answers `404 Not Found - PUT`.
       # That is how 1.0.5 failed, with npm 11.19.0 installed and the trusted
       # publisher correctly configured -- the stray .npmrc was the whole problem.
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '20'
+      - name: Verify release tag matches package version
+        run: |
+          package_version="$(node -p "require('./package.json').version")"
+          test "${GITHUB_REF_NAME}" = "v${package_version}"
+      - name: Verify release commit is on main
+        run: git merge-base --is-ancestor "${GITHUB_SHA}" origin/main
       # Node 20 bundles npm 10.8.2, and OIDC trusted publishing needs npm >= 11.5.1.
       # Without a newer npm the publish step sends no credential at all and the
       # registry answers `404 Not Found - PUT`, which reads like a missing package
@@ -64,7 +88,7 @@ jobs:
       # Pinned to the 11 line, NOT @latest: npm 12 requires node >= 22.22, so
       # `npm@latest` fails to install on Node 20 with EBADENGINE. That is how 1.0.4
       # failed. npm 11 declares `^20.17.0 || >=22.9.0`, so it runs here.
-      - run: npm install -g npm@11
+      - run: npm install -g npm@11.19.0
       - run: npm -v
       # --ignore-scripts skips dependency BUILD scripts, not ours. n8n-workflow pulls
       # @n8n/expression-runtime -> isolated-vm, a native module that fails to compile
