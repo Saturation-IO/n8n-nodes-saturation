@@ -54,6 +54,7 @@ jobs:
     needs: verify
     if: github.event_name == 'release' && github.event.release.prerelease == false
     runs-on: ubuntu-latest
+    environment: npm
     timeout-minutes: 10
     permissions:
       contents: read
