@@ -17,14 +17,10 @@ export const libraryOperations: INodeProperties[] = [
 				value: 'installRatePack',
 				action: 'Install a rate pack',
 				description: 'Install a workspace-enabled rate pack into a project',
-				// POST /projects/{prj}/library/rates/{packId}/add — the verb is `add`,
-				// not `install` (library/index.ts:'/projects/{projectId}/library/rates/{packId}/add').
-				// `/install` 404s; the Zapier path builder has always used `add`.
-				// Idempotent upsert; carries an Idempotency-Key for the unified contract.
 				routing: {
 					request: {
-						method: 'POST',
-						url: '=/projects/{{$parameter.projectId}}/library/rates/{{$parameter.packId}}/add',
+						method: 'PUT',
+						url: '=/projects/{{$parameter.projectId}}/library/rate-packs/{{$parameter.packId}}',
 						headers: {
 							'Idempotency-Key': '=n8n-{{$execution.id}}-{{$itemIndex}}',
 						},
@@ -36,11 +32,10 @@ export const libraryOperations: INodeProperties[] = [
 				value: 'addIncentive',
 				action: 'Add an incentive program',
 				description: 'Add an incentive program to a project',
-				// POST /projects/{prj}/library/incentives/add
 				routing: {
 					request: {
 						method: 'POST',
-						url: '=/projects/{{$parameter.projectId}}/library/incentives/add',
+						url: '=/projects/{{$parameter.projectId}}/library/incentives',
 						headers: {
 							'Idempotency-Key': '=n8n-{{$execution.id}}-{{$itemIndex}}',
 						},
@@ -75,7 +70,7 @@ export const libraryFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The published incentive program to add (ipr_…)',
+		description: 'The published incentive program to add',
 		displayOptions: { show: { ...show, operation: ['addIncentive'] } },
 		routing: { send: { type: 'body', property: 'programId' } },
 	},

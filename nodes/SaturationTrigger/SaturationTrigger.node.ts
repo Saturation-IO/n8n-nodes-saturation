@@ -153,7 +153,7 @@ export class SaturationTrigger implements INodeType {
 				type: 'string',
 				default: '',
 				description:
-					'Optional. Narrow the subscription to a single project (prj_…). Leave blank for every project you can read in the workspace.',
+					'Optional. Narrow the subscription to one project. Leave blank for every project you can read in the workspace.',
 			},
 			// No Payload Style option: v1 delivers the THIN envelope for every
 			// subscription. The server accepts `payloadStyle: 'full'` but

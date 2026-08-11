@@ -71,12 +71,64 @@ describe('Saturation action node', () => {
 		const writeOps = node.description.properties
 			.filter((p) => p.name === 'operation')
 			.flatMap((p) => p.options)
-			.filter((o) => o.routing && o.routing.request && o.routing.request.method === 'POST');
+			.filter(
+				(o) =>
+					o.routing &&
+					o.routing.request &&
+					['POST', 'PUT'].includes(o.routing.request.method),
+			);
 		expect(writeOps.length).toBeGreaterThan(0);
 		for (const op of writeOps) {
 			expect(op.routing.request.headers).toBeDefined();
 			expect(op.routing.request.headers['Idempotency-Key']).toBeTruthy();
 		}
+	});
+
+	it('requires a Transaction date with an execution-time default', () => {
+		const date = node.description.properties.find(
+			(property) =>
+				property.name === 'timestamp' &&
+				property.displayOptions?.show?.operation?.includes('create'),
+		);
+		expect(date.required).toBe(true);
+		expect(date.default).toBe('={{ $now.toISO() }}');
+	});
+
+	it('packs the exact supported write routes and body fields', () => {
+		const operations = node.description.properties
+			.filter((property) => property.name === 'operation')
+			.flatMap((property) => property.options);
+		const operation = (value) => operations.find((candidate) => candidate.value === value);
+		expect(operation('create').routing.request).toMatchObject({
+			method: 'POST',
+			url: '=/transactions',
+		});
+		expect(operation('link').routing.request).toMatchObject({
+			method: 'PUT',
+			url: '=/documents/{{$parameter.documentId}}/links/{{$parameter.targetKind}}',
+		});
+		expect(operation('installRatePack').routing.request).toMatchObject({
+			method: 'PUT',
+			url: '=/projects/{{$parameter.projectId}}/library/rate-packs/{{$parameter.packId}}',
+		});
+		expect(operation('addIncentive').routing.request).toMatchObject({
+			method: 'POST',
+			url: '=/projects/{{$parameter.projectId}}/library/incentives',
+		});
+
+		const routedBody = Object.fromEntries(
+			node.description.properties
+				.filter((property) => property.routing?.send?.type === 'body')
+				.map((property) => [property.name, property.routing.send.property]),
+		);
+		expect(routedBody).toMatchObject({
+			timestamp: 'timestamp',
+			targetId: 'targetId',
+			replace: 'replace',
+			programId: 'programId',
+		});
+		expect(Object.values(routedBody)).not.toContain('target.kind');
+		expect(Object.values(routedBody)).not.toContain('target.id');
 	});
 });
 
@@ -180,10 +232,10 @@ describe('Saturation action node endpoints', () => {
 	const KNOWN_V1_PATHS = new Set([
 		'/transactions',
 		'/documents',
-		'/documents/{documentId}/assign',
+		'/documents/{documentId}/links/{targetKind}',
 		'/search',
-		'/projects/{projectId}/library/rates/{packId}/add',
-		'/projects/{projectId}/library/incentives/add',
+		'/projects/{projectId}/library/rate-packs/{packId}',
+		'/projects/{projectId}/library/incentives',
 	]);
 
 	// Collapse n8n's `={{$parameter.x}}` interpolation back to `{x}` so a routed
@@ -217,10 +269,10 @@ describe('Saturation action node endpoints', () => {
 		}
 	});
 
-	it('installs a rate pack via /add, the verb the route actually exposes', () => {
+	it('uses the canonical project Rate Pack path', () => {
 		const urls = routedUrls(new Saturation()).map(normalize);
-		expect(urls).toContain('/projects/{projectId}/library/rates/{packId}/add');
-		expect(urls.some((u) => u.endsWith('/install'))).toBe(false);
+		expect(urls).toContain('/projects/{projectId}/library/rate-packs/{packId}');
+		expect(urls.some((url) => url.includes('/library/rates'))).toBe(false);
 	});
 });
 

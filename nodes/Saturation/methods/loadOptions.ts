@@ -58,9 +58,9 @@ export async function listContacts(this: ILoadOptionsFunctions): Promise<INodePr
 	}));
 }
 
-// Rate-pack dropdown — GET /v1/library/rates.
+// Rate-pack dropdown from the canonical public collection.
 export async function listRatePacks(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-	const rows = await fetchCollection(this, '/library/rates');
+	const rows = await fetchCollection(this, '/library/rate-packs');
 	return rows.map((r) => ({
 		name: (r.name as string) ?? (r.id as string),
 		value: r.id as string,

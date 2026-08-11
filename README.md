@@ -54,15 +54,15 @@ The API returns money as an integer number of minor units plus an ISO 4217 curre
 | ----------- | ----------------- | ------------------------------------------------------- |
 | Transaction | Create            | `POST /transactions`                                    |
 | Transaction | Get Many          | `GET /transactions`                                     |
-| Document    | Assign            | `POST /documents/{documentId}/assign`                   |
+| Document    | Link              | `PUT /documents/{documentId}/links/{kind}`              |
 | Document    | Get Many          | `GET /documents`                                        |
-| Library     | Install Rate Pack | `POST /projects/{projectId}/library/rates/{packId}/add` |
-| Library     | Add Incentive     | `POST /projects/{projectId}/library/incentives/add`     |
+| Library     | Install Rate Pack | `PUT /projects/{projectId}/library/rate-packs/{packId}` |
+| Library     | Add Incentive     | `POST /projects/{projectId}/library/incentives`         |
 | Search      | Spotlight         | `GET /search`                                           |
 
 Write operations send an `Idempotency-Key` based on the n8n execution and input item. Requests that reuse that key and body do not create a second record. A new workflow execution receives a new key.
 
-Document upload is not yet a first-class operation. Use n8n's **HTTP Request** node with the Saturation credential to call `POST /documents`, then use **Document > Assign**.
+Document upload is not yet a first-class operation. Use n8n's **HTTP Request** node with the Saturation credential to call `POST /documents`, then use **Document > Link**.
 
 ## Trigger workflows
 

@@ -82,7 +82,7 @@ export const transactionFields: INodeProperties[] = [
 		type: 'number',
 		required: true,
 		default: 0,
-		description: 'Integer count of minor units — 50000 means $500.00. Never a float.',
+		description: 'Integer minor units. 50000 means $500.00. Never enter a decimal.',
 		displayOptions: { show: { ...show, operation: ['create'] } },
 		routing: { send: { type: 'body', property: 'amount.amount' } },
 	},
@@ -97,6 +97,16 @@ export const transactionFields: INodeProperties[] = [
 		routing: { send: { type: 'body', property: 'amount.currency' } },
 	},
 	{
+		displayName: 'Date',
+		name: 'timestamp',
+		type: 'dateTime',
+		required: true,
+		default: '={{ $now.toISO() }}',
+		description: 'Transaction date and time. Defaults to the workflow execution time.',
+		displayOptions: { show: { ...show, operation: ['create'] } },
+		routing: { send: { type: 'body', property: 'timestamp' } },
+	},
+	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
@@ -104,13 +114,6 @@ export const transactionFields: INodeProperties[] = [
 		default: {},
 		displayOptions: { show: { ...show, operation: ['create'] } },
 		options: [
-			{
-				displayName: 'Date',
-				name: 'timestamp',
-				type: 'dateTime',
-				default: '',
-				routing: { send: { type: 'body', property: 'timestamp' } },
-			},
 			{
 				displayName: 'Description',
 				name: 'description',
@@ -133,7 +136,7 @@ export const transactionFields: INodeProperties[] = [
 				name: 'budgetLineId',
 				type: 'string',
 				default: '',
-				description: 'Coded budget line ID (bud_…)',
+				description: 'Coded budget line ID',
 				routing: { send: { type: 'body', property: 'budgetLineId' } },
 			},
 		],
