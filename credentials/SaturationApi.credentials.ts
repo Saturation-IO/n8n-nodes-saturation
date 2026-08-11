@@ -8,9 +8,10 @@ import type {
 
 // Saturation API credential. A personal API token authenticates as a
 // user (or a workspace service identity) and inherits that principal's live
-// permissions. The token is injected as `Authorization: Bearer <token>` on
-// every request (securityScheme `bearerAuth` in the OpenAPI), and verified by
-// the credential test which calls `GET /v1/me`.
+// permissions. Create one under Settings > Developers > API. The token is
+// injected as `Authorization: Bearer <token>` on every request (securityScheme
+// `bearerAuth` in the OpenAPI), and verified by the credential test which calls
+// `GET /v1/me`.
 export class SaturationApi implements ICredentialType {
 	name = 'saturationApi';
 
@@ -20,10 +21,7 @@ export class SaturationApi implements ICredentialType {
 	// mark keeps contrast against whichever background n8n renders behind it.
 	icon: Icon = { light: 'file:saturation.svg', dark: 'file:saturation.dark.svg' };
 
-	// The rule below camelCases the VALUE, assuming n8n's first-party convention of a
-	// doc slug ('airtable') that resolves inside n8n's own docs site. This is a community
-	// node pointing at our own docs, so autofixing rewrites the URL to the nonsense
-	// 'httpsDocsSaturationIo'. Disabled rather than renamed.
+	// Community credentials link to Saturation's docs, not an n8n docs slug.
 	// eslint-disable-next-line n8n-nodes-base/cred-class-field-documentation-url-miscased
 	documentationUrl = 'https://docs.saturation.io';
 
@@ -35,7 +33,7 @@ export class SaturationApi implements ICredentialType {
 			typeOptions: { password: true },
 			default: '',
 			required: true,
-			description: 'Your personal API token. Create one in Saturation under Settings > API Tokens.',
+			description: 'Your personal API token. Create one in Saturation under Settings > Developers > API.',
 		},
 		{
 			displayName: 'Base URL',

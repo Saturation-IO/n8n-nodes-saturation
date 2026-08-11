@@ -16,7 +16,7 @@ export const transactionOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				action: 'Create a transaction',
-				description: 'Create a journal transaction',
+				description: 'Create a manual transaction',
 				// POST /transactions — billable write, carries an
 				// Idempotency-Key for safe retries. projectId rides in the body
 				// to assign the transaction to a project (optional server-side).
@@ -129,6 +129,7 @@ export const transactionFields: INodeProperties[] = [
 				default: '',
 				description:
 					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+				hint: 'The list shows the first 100 contacts you can read.',
 				routing: { send: { type: 'body', property: 'contactId' } },
 			},
 			{
@@ -216,7 +217,7 @@ export const transactionFields: INodeProperties[] = [
 				name: 'source',
 				type: 'string',
 				default: '',
-				description: 'Filter by rail (e.g. journal). Comma-separate for an IN set.',
+				description: 'Filter by source, such as manual. Separate multiple values with commas.',
 				routing: { send: { type: 'query', property: 'source' } },
 			},
 			{

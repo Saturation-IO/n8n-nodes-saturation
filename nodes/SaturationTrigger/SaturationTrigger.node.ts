@@ -29,8 +29,8 @@ const WEBHOOK_EVENTS: INodePropertyOptions[] = [
 	{ name: 'Purchase Order Paid', value: 'purchaseOrder.paid' },
 	{ name: 'Purchase Order Voided', value: 'purchaseOrder.void' },
 	{ name: 'Document Created', value: 'document.created' },
-	{ name: 'Document Assigned', value: 'document.assigned' },
-	{ name: 'Document Unassigned', value: 'document.unassigned' },
+	{ name: 'Document Linked', value: 'document.linked' },
+	{ name: 'Document Unlinked', value: 'document.unlinked' },
 	{ name: 'Document Deleted', value: 'document.deleted' },
 	{ name: 'Incentive Added', value: 'incentive.added' },
 	{ name: 'Pack Installed', value: 'pack.installed' },
@@ -117,12 +117,6 @@ export class SaturationTrigger implements INodeType {
 		},
 		inputs: [],
 		outputs: [NodeConnectionTypes.Main],
-		// n8n's type only accepts `true` (or omission) -- there is no way to declare
-		// "not a tool" -- and the verification scan requires the property to be
-		// present. So `true` it is, which is also what n8n's own rule advises. In
-		// practice a webhook trigger is started by Saturation pushing an event, not
-		// by a tool call, so this changes nothing about how it runs.
-		usableAsTool: true,
 		credentials: [
 			{
 				name: 'saturationApi',
@@ -155,14 +149,7 @@ export class SaturationTrigger implements INodeType {
 				description:
 					'Optional. Narrow the subscription to one project. Leave blank for every project you can read in the workspace.',
 			},
-			// No Payload Style option: v1 delivers the THIN envelope for every
-			// subscription. The server accepts `payloadStyle: 'full'` but
-			// documents that those subscriptions "also receive the thin body for
-			// now — the CASL-projected object inline requires the per-entity
-			// projection service, deferred with this loud note rather than
-			// shipping an unprojected (permission-leaking) object"
-			// (apps-next/next-api/src/jobs/webhook-delivery.ts:37-41).
-			//
+			// Webhook deliveries contain resource identifiers.
 			// Offering the choice therefore lied to the user: picking "Full"
 			// still delivered an id-only envelope, and every downstream node
 			// reading inline fields got undefined. The Zapier factory hardcodes
@@ -216,7 +203,7 @@ export class SaturationTrigger implements INodeType {
 				// Always thin: v1 delivers the id-only envelope regardless, so
 				// requesting `full` would only misrepresent what arrives. See the
 				// Payload Style note on the properties list above.
-				const body: IDataObject = { url: webhookUrl, events, payloadStyle: 'thin' };
+				const body: IDataObject = { url: webhookUrl, events };
 				if (projectId) {
 					body.projectId = projectId;
 				}

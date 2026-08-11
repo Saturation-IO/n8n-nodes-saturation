@@ -4,84 +4,121 @@
 [![CI](https://github.com/Saturation-IO/n8n-nodes-saturation/actions/workflows/publish.yml/badge.svg)](https://github.com/Saturation-IO/n8n-nodes-saturation/actions/workflows/publish.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-Use Saturation production finance data in n8n workflows. The package includes:
+Use [Saturation](https://saturation.io) production finance data in n8n workflows. This package provides two nodes:
 
-- **Saturation**, for reading and writing transactions, documents, Library data, and search
-- **Saturation Trigger**, for starting a workflow when a supported Saturation event occurs
+- **Saturation** reads and writes transactions, documents, Library data, and search results.
+- **Saturation Trigger** starts a workflow when a supported Saturation event occurs.
 
-[Install](#install) | [Connect](#connect-saturation) | [Try a workflow](#try-a-workflow) | [Supported operations](#supported-operations) | [Develop](#develop)
+[Install](#install) | [Connect](#connect-saturation) | [Build a workflow](#build-a-workflow) | [Supported operations](#supported-operations) | [Develop](#develop)
+
+## Release status
+
+The latest npm release is **1.0.10**. The current repository source contains unreleased corrections for document links, project Library routes, document event names, and trigger metadata. The operations documented below describe the current source.
+
+Installing from npm still installs 1.0.10. Its older document and Library operations no longer match the current Saturation API. Use the [`v1.0.10` tag](https://github.com/Saturation-IO/n8n-nodes-saturation/tree/v1.0.10) to review that release. The corrected source will reach npm only after a maintainer publishes a new GitHub Release.
 
 ## Install
 
-This package is available from [npm](https://www.npmjs.com/package/n8n-nodes-saturation).
+This is an unverified community node. npm installation is available on self-hosted n8n. n8n Cloud requires [community-node verification](https://docs.n8n.io/integrations/creating-nodes/deploy/submit-community-nodes/).
 
-On a self-hosted n8n instance:
+To install the published package on self-hosted n8n:
 
 1. Open **Settings > Community Nodes**.
 2. Select **Install**.
 3. Enter `n8n-nodes-saturation`.
 4. Review the community-node warning, then select **Install**.
 
-See n8n's [community-node installation guide](https://docs.n8n.io/integrations/community-nodes/installation-and-management/gui-installation/) for role and deployment requirements.
-
-Unverified community nodes are available on self-hosted n8n only. The package will become available on n8n Cloud after n8n approves it through the Creator Portal.
+See n8n's [GUI installation guide](https://docs.n8n.io/integrations/community-nodes/installation-and-management/gui-installation/) for instance and role requirements.
 
 ## Connect Saturation
 
-1. In Saturation, open **Settings > API Tokens** and create a personal API token.
+1. In Saturation, open **Settings > Developers > API** and create a personal API token.
 2. In n8n, create a **Saturation API** credential.
 3. Paste the token into **API Token**.
-4. Leave **Base URL** set to `https://next-api.saturation.io/v1` for production.
-5. Save the credential. n8n checks it with `GET /me`.
+4. Keep **Base URL** set to `https://next-api.saturation.io/v1` for production.
+5. Save the credential. n8n verifies it with `GET /me`.
 
-Treat the token as a secret. It carries the permissions of its Saturation user or service identity and is bound to one workspace.
+The token selects one workspace and carries that identity's current permissions. Store it as a secret. Do not add it to workflow fields, logs, or exported workflow JSON.
 
-## Try a workflow
+## Build a workflow
 
-To list recent transactions:
+### List recent transactions
 
-1. Add a **Saturation** node to a workflow.
-2. Select **Transaction** as the resource.
-3. Select **Get Many** as the operation.
-4. Choose **All Projects**, or select one project.
-5. Attach your Saturation credential and run the node.
+1. Add a **Saturation** node.
+2. Select **Transaction > Get Many**.
+3. Choose **All Projects**, or select one project.
+4. Add filters such as date, status, contact, source, or amount.
+5. Attach the **Saturation API** credential and run the node.
 
-The API returns money as an integer number of minor units plus an ISO 4217 currency code. For example, `50000` with `USD` means $500.00.
+**Transaction > Get Many** returns one API page, with up to 100 rows. **Document > Get Many** and **Search > Spotlight** follow the same one-page limit.
+
+### Create a manual transaction
+
+1. Add a **Saturation** node after the node that supplies your input data.
+2. Select **Transaction > Create** and choose a project.
+3. Map **Type**, **Amount (Minor Units)**, **Currency**, and **Date**.
+4. Add a description, contact, or budget line when needed.
+
+Saturation represents money as integer minor units with an ISO 4217 currency code. `50000` with `USD` means $500.00.
+
+### Fetch a transaction after an event
+
+1. Add a **Saturation Trigger** node.
+2. Select **Transaction Created** or **Transaction Updated**.
+3. Add an **HTTP Request** node and choose the **Saturation API** predefined credential.
+4. Send `GET https://next-api.saturation.io/v1/transactions/{{$json.data.id}}`.
+
+The trigger emits a compact envelope. The changed record is identified by `data.kind` and `data.id`; fetch it to read current values and re-check permissions.
 
 ## Supported operations
 
-| Resource    | Operation         | API request                                             |
-| ----------- | ----------------- | ------------------------------------------------------- |
-| Transaction | Create            | `POST /transactions`                                    |
-| Transaction | Get Many          | `GET /transactions`                                     |
-| Document    | Link              | `PUT /documents/{documentId}/links/{kind}`              |
-| Document    | Get Many          | `GET /documents`                                        |
-| Library     | Install Rate Pack | `PUT /projects/{projectId}/library/rate-packs/{packId}` |
-| Library     | Add Incentive     | `POST /projects/{projectId}/library/incentives`         |
-| Search      | Spotlight         | `GET /search`                                           |
+The current source exposes these action-node operations:
 
-Write operations send an `Idempotency-Key` based on the n8n execution and input item. Requests that reuse that key and body do not create a second record. A new workflow execution receives a new key.
+| Resource | Operation | API request | Inputs |
+| --- | --- | --- | --- |
+| Transaction | Create | `POST /transactions` | Project, type, amount, currency, date; optional description, contact, budget line |
+| Transaction | Get Many | `GET /transactions` | Optional project, date, amount, contact, budget line, source, status, type, and search filters |
+| Document | Link | `PUT /documents/{documentId}/links/{kind}` | Document, target kind, target, and optional replace flag |
+| Document | Get Many | `GET /documents` | Limit |
+| Library | Install Rate Pack | `PUT /projects/{projectId}/library/rate-packs/{packId}` | Project and workspace rate pack |
+| Library | Add Incentive | `POST /projects/{projectId}/library/incentives` | Project and published incentive program |
+| Search | Spotlight | `GET /search` | Query, optional result types, and limit |
 
-Document upload is not yet a first-class operation. Use n8n's **HTTP Request** node with the Saturation credential to call `POST /documents`, then use **Document > Link**.
+Document links support transactions, payments, purchase orders, budget lines, contacts, and projects.
+
+Project, contact, and rate-pack selectors load the first 100 records the token can read. If a record is not listed, switch the field to an [expression](https://docs.n8n.io/code/expressions/) and enter its ID. Choose **All Projects** when a project filter should cover the workspace.
+
+Write operations send an `Idempotency-Key` based on the n8n execution and input item. Retrying the same write with the same key and body does not create a second record. A different workflow execution uses a different key.
+
+Document upload uses `multipart/form-data` and is not an action-node operation. Use n8n's **HTTP Request** node with the **Saturation API** credential to call `POST /documents`, then use **Document > Link**.
+
+The action node does not expose every Saturation API endpoint. Use the [OpenAPI contract](https://docs.saturation.io/openapi.yaml) with n8n's **HTTP Request** node for endpoints outside the table.
 
 ## Trigger workflows
 
-The **Saturation Trigger** node registers and removes a webhook with the workflow lifecycle. It supports transaction, budget, purchase-order, document, incentive, and rate-pack events.
+The **Saturation Trigger** node creates a webhook when a workflow activates and removes it when the workflow deactivates. You can limit a subscription to one project.
 
-Each delivery contains a compact event envelope with the entity ID. Add a Saturation action node after the trigger to fetch the current record. The trigger verifies the delivery's HMAC signature and rejects missing, invalid, or stale signatures.
+Supported events:
 
-Budget and purchase-order support is currently trigger-only. The Saturation action node does not yet read or write those resources.
+- Transactions: `transaction.created`, `transaction.updated`
+- Budgets: `budget.changed`
+- Purchase orders: `purchaseOrder.created`, `purchaseOrder.pending`, `purchaseOrder.approved`, `purchaseOrder.rejected`, `purchaseOrder.actualizing`, `purchaseOrder.paid`, `purchaseOrder.void`
+- Documents: `document.created`, `document.linked`, `document.unlinked`, `document.deleted`
+- Library: `incentive.added`, `pack.installed`, `pack.uninstalled`
+
+Each delivery contains `id`, `event`, `workspaceId`, `occurredAt`, and `data`. Project-scoped events may also contain `projectId`. Use the delivery `id` to detect duplicates.
+
+The trigger verifies `X-Saturation-Signature` against the exact request body and rejects missing, invalid, or stale signatures. Deliveries contain identifiers rather than the full changed record.
 
 ## Documentation
 
 - [Saturation API documentation](https://docs.saturation.io)
 - [OpenAPI contract](https://docs.saturation.io/openapi.yaml)
-- [Agent documentation map](https://docs.saturation.io/llms.txt)
 - [n8n community-node documentation](https://docs.n8n.io/integrations/community-nodes/)
 
 ## Develop
 
-Use Node.js 20 or later.
+The package supports Node.js 18.17 or later. Repository checks run on Node.js 20.
 
 ```bash
 git clone https://github.com/Saturation-IO/n8n-nodes-saturation.git
@@ -90,9 +127,10 @@ npm ci --ignore-scripts
 npm run build
 npm run lint
 npm test
+npm pack --dry-run
 ```
 
-`npm run scan` checks the latest published package with n8n's community-package scanner. See [CONTRIBUTING.md](CONTRIBUTING.md) for the source checks and release process.
+`npm run scan` checks the latest version already published to npm. It does not scan an unpublished checkout. See [CONTRIBUTING.md](CONTRIBUTING.md) for local checks and the release process.
 
 ## Support
 

@@ -18,7 +18,7 @@ export const documentOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'PUT',
-						url: '=/documents/{{$parameter.documentId}}/links/{{$parameter.targetKind}}',
+						url: '=/documents/{{$parameter.documentId}}/links/{{$parameter.kind}}',
 						headers: {
 							'Idempotency-Key': '=n8n-{{$execution.id}}-{{$itemIndex}}',
 						},
@@ -55,13 +55,16 @@ export const documentFields: INodeProperties[] = [
 	},
 	{
 		displayName: 'Target Kind',
-		name: 'targetKind',
+		name: 'kind',
 		type: 'options',
 		default: 'transaction',
 		options: [
-			{ name: 'Transaction', value: 'transaction' },
-			{ name: 'Purchase Order', value: 'purchaseOrder' },
+			{ name: 'Budget Line', value: 'budgetLine' },
 			{ name: 'Contact', value: 'contact' },
+			{ name: 'Payment', value: 'payment' },
+			{ name: 'Project', value: 'project' },
+			{ name: 'Purchase Order', value: 'purchaseOrder' },
+			{ name: 'Transaction', value: 'transaction' },
 		],
 		displayOptions: { show: { ...show, operation: ['link'] } },
 	},

@@ -59,7 +59,8 @@ export const libraryFields: INodeProperties[] = [
 		required: true,
 		default: '',
 		description:
-			'The workspace rate pack to install. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+		hint: 'The list shows the first 100 workspace rate packs you can read.',
 		displayOptions: { show: { ...show, operation: ['installRatePack'] } },
 	},
 

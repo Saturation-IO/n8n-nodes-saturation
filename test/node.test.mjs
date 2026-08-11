@@ -23,8 +23,8 @@ const EXPECTED_EVENTS = [
 	'purchaseOrder.paid',
 	'purchaseOrder.void',
 	'document.created',
-	'document.assigned',
-	'document.unassigned',
+	'document.linked',
+	'document.unlinked',
 	'document.deleted',
 	'incentive.added',
 	'pack.installed',
@@ -49,6 +49,12 @@ describe('SaturationApi credential', () => {
 		const apiToken = cred.properties.find((property) => property.name === 'apiToken');
 		expect(apiToken.description).not.toMatch(/JWT/i);
 	});
+
+	it('points users to the current API token setting', () => {
+		const apiToken = cred.properties.find((property) => property.name === 'apiToken');
+		expect(apiToken.description).toContain('Settings > Developers > API');
+		expect(apiToken.description).not.toContain('Settings > API Tokens');
+	});
 });
 
 describe('Saturation action node', () => {
@@ -65,6 +71,27 @@ describe('Saturation action node', () => {
 		expect(Object.keys(node.methods.loadOptions).sort()).toEqual(
 			['listContacts', 'listProjects', 'listProjectsWithAll', 'listRatePacks'].sort(),
 		);
+	});
+
+	it('discloses the first-100 option limit and expression ID escape hatch', () => {
+		const loadedOptions = node.description.properties.filter(
+			(property) => property.typeOptions?.loadOptionsMethod,
+		);
+		for (const property of loadedOptions) {
+			expect(property.hint).toContain('first 100');
+			expect(property.description).toContain('expression');
+		}
+	});
+
+	it('uses bounded collection controls and documents the one-page limit', () => {
+		const limits = node.description.properties.filter((property) => property.name === 'limit');
+		expect(limits).toHaveLength(3);
+		for (const limit of limits) {
+			expect(limit.typeOptions?.minValue).toBe(1);
+			expect(limit.description).toBe('Max number of results to return');
+		}
+		const readme = readFileSync(new URL('../README.md', import.meta.url), 'utf8');
+		expect(readme).toContain('one API page, with up to 100 rows');
 	});
 
 	it('sets an Idempotency-Key header on every write operation', () => {
@@ -105,7 +132,7 @@ describe('Saturation action node', () => {
 		});
 		expect(operation('link').routing.request).toMatchObject({
 			method: 'PUT',
-			url: '=/documents/{{$parameter.documentId}}/links/{{$parameter.targetKind}}',
+			url: '=/documents/{{$parameter.documentId}}/links/{{$parameter.kind}}',
 		});
 		expect(operation('installRatePack').routing.request).toMatchObject({
 			method: 'PUT',
@@ -130,10 +157,21 @@ describe('Saturation action node', () => {
 		expect(Object.values(routedBody)).not.toContain('target.kind');
 		expect(Object.values(routedBody)).not.toContain('target.id');
 	});
+
+	it('offers every caller-writable document-link kind', () => {
+		const kind = node.description.properties.find((property) => property.name === 'kind');
+		expect(kind.options.map((option) => option.value)).toEqual([
+			'budgetLine', 'contact', 'payment', 'project', 'purchaseOrder', 'transaction',
+		]);
+	});
 });
 
 describe('SaturationTrigger node', () => {
 	const node = new SaturationTrigger();
+
+	it('does not advertise a webhook trigger as an AI tool', () => {
+		expect(node.description).not.toHaveProperty('usableAsTool');
+	});
 
 	it('subscribes/unsubscribes via the Webhook API lifecycle', () => {
 		expect(Object.keys(node.webhookMethods.default).sort()).toEqual(
@@ -176,7 +214,7 @@ describe('SaturationTrigger node', () => {
 		};
 		await node.webhookMethods.default.create.call(ctx);
 		expect(requests).toHaveLength(1);
-		expect(requests[0].body.payloadStyle).toBe('thin');
+		expect(requests[0].body).not.toHaveProperty('payloadStyle');
 	});
 
 	it('recreates a missing webhook only after a 404', async () => {
@@ -232,7 +270,7 @@ describe('Saturation action node endpoints', () => {
 	const KNOWN_V1_PATHS = new Set([
 		'/transactions',
 		'/documents',
-		'/documents/{documentId}/links/{targetKind}',
+		'/documents/{documentId}/links/{kind}',
 		'/search',
 		'/projects/{projectId}/library/rate-packs/{packId}',
 		'/projects/{projectId}/library/incentives',
