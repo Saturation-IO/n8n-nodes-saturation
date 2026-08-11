@@ -11,24 +11,16 @@ Use [Saturation](https://saturation.io) production finance data in n8n workflows
 
 [Install](#install) | [Connect](#connect-saturation) | [Build a workflow](#build-a-workflow) | [Supported operations](#supported-operations) | [Develop](#develop)
 
-## Release status
-
-The latest npm release is **1.0.10**. The current repository source contains unreleased corrections for document links, project Library routes, document event names, and trigger metadata. The operations documented below describe the current source.
-
-Installing from npm still installs 1.0.10. Its older document and Library operations no longer match the current Saturation API. Use the [`v1.0.10` tag](https://github.com/Saturation-IO/n8n-nodes-saturation/tree/v1.0.10) to review that release. The corrected source will reach npm only after a maintainer publishes a new GitHub Release.
-
 ## Install
 
-This is an unverified community node. npm installation is available on self-hosted n8n. n8n Cloud requires [community-node verification](https://docs.n8n.io/integrations/creating-nodes/deploy/submit-community-nodes/).
-
-To install the published package on self-hosted n8n:
+To install the community node on self-hosted n8n:
 
 1. Open **Settings > Community Nodes**.
 2. Select **Install**.
 3. Enter `n8n-nodes-saturation`.
 4. Review the community-node warning, then select **Install**.
 
-See n8n's [GUI installation guide](https://docs.n8n.io/integrations/community-nodes/installation-and-management/gui-installation/) for instance and role requirements.
+See n8n's [GUI installation guide](https://docs.n8n.io/integrations/community-nodes/installation-and-management/gui-installation/) for instance and role requirements. n8n Cloud requires [community-node verification](https://docs.n8n.io/integrations/creating-nodes/deploy/submit-community-nodes/).
 
 ## Connect Saturation
 
@@ -72,7 +64,7 @@ The trigger emits a compact envelope. The changed record is identified by `data.
 
 ## Supported operations
 
-The current source exposes these action-node operations:
+The package exposes these action-node operations:
 
 | Resource | Operation | API request | Inputs |
 | --- | --- | --- | --- |
