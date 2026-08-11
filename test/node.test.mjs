@@ -27,8 +27,6 @@ const EXPECTED_EVENTS = [
 	'document.unlinked',
 	'document.deleted',
 	'incentive.added',
-	'pack.installed',
-	'pack.uninstalled',
 ];
 
 describe('SaturationApi credential', () => {
@@ -67,9 +65,9 @@ describe('Saturation action node', () => {
 		expect(resources).toEqual(['transaction', 'document', 'library', 'search']);
 	});
 
-	it('provides the project/contact/rate-pack dropdowns', () => {
+	it('provides the project and contact dropdowns', () => {
 		expect(Object.keys(node.methods.loadOptions).sort()).toEqual(
-			['listContacts', 'listProjects', 'listProjectsWithAll', 'listRatePacks'].sort(),
+			['listContacts', 'listProjects', 'listProjectsWithAll'].sort(),
 		);
 	});
 
@@ -133,10 +131,6 @@ describe('Saturation action node', () => {
 		expect(operation('link').routing.request).toMatchObject({
 			method: 'PUT',
 			url: '=/documents/{{$parameter.documentId}}/links/{{$parameter.kind}}',
-		});
-		expect(operation('installRatePack').routing.request).toMatchObject({
-			method: 'PUT',
-			url: '=/projects/{{$parameter.projectId}}/library/rate-packs/{{$parameter.packId}}',
 		});
 		expect(operation('addIncentive').routing.request).toMatchObject({
 			method: 'POST',
@@ -257,12 +251,8 @@ describe('SaturationTrigger node', () => {
 
 // Every URL the node routes to, pinned against the real /v1 route table.
 //
-// The regression: the rate-pack operation posted to
-// `/library/rates/{packId}/install`, but the route is `/add`
-// in the public OpenAPI contract. It returned 404 on every call
-// and nothing caught it. The node's URLs were never checked against the API
-// they target, so a typo in a template string was indistinguishable from a
-// working integration until someone ran it.
+// Keep every declarative route pinned to the public contract. A stale template
+// must fail here before it ships as a node operation that always returns 404.
 //
 // Kept as a literal allow-list rather than a live fetch so the test is
 // hermetic; when a path here changes, the diff makes you look at the route.
@@ -272,7 +262,6 @@ describe('Saturation action node endpoints', () => {
 		'/documents',
 		'/documents/{documentId}/links/{kind}',
 		'/search',
-		'/projects/{projectId}/library/rate-packs/{packId}',
 		'/projects/{projectId}/library/incentives',
 	]);
 
@@ -307,11 +296,6 @@ describe('Saturation action node endpoints', () => {
 		}
 	});
 
-	it('uses the canonical project Rate Pack path', () => {
-		const urls = routedUrls(new Saturation()).map(normalize);
-		expect(urls).toContain('/projects/{projectId}/library/rate-packs/{packId}');
-		expect(urls.some((url) => url.includes('/library/rates'))).toBe(false);
-	});
 });
 
 // The node icon ships inside the package (`icon: 'file:saturation.svg'`), so

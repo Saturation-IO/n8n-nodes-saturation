@@ -72,13 +72,12 @@ The package exposes these action-node operations:
 | Transaction | Get Many | `GET /transactions` | Optional project, date, amount, contact, budget line, source, status, type, and search filters |
 | Document | Link | `PUT /documents/{documentId}/links/{kind}` | Document, target kind, target, and optional replace flag |
 | Document | Get Many | `GET /documents` | Limit |
-| Library | Install Rate Pack | `PUT /projects/{projectId}/library/rate-packs/{packId}` | Project and workspace rate pack |
 | Library | Add Incentive | `POST /projects/{projectId}/library/incentives` | Project and published incentive program |
 | Search | Spotlight | `GET /search` | Query, optional result types, and limit |
 
 Document links support transactions, payments, purchase orders, budget lines, contacts, and projects.
 
-Project, contact, and rate-pack selectors load the first 100 records the token can read. If a record is not listed, switch the field to an [expression](https://docs.n8n.io/code/expressions/) and enter its ID. Choose **All Projects** when a project filter should cover the workspace.
+Project and contact selectors load the first 100 records the token can read. If a record is not listed, switch the field to an [expression](https://docs.n8n.io/code/expressions/) and enter its ID. Choose **All Projects** when a project filter should cover the workspace.
 
 Write operations send an `Idempotency-Key` based on the n8n execution and input item. Retrying the same write with the same key and body does not create a second record. A different workflow execution uses a different key.
 
@@ -96,7 +95,7 @@ Supported events:
 - Budgets: `budget.changed`
 - Purchase orders: `purchaseOrder.created`, `purchaseOrder.pending`, `purchaseOrder.approved`, `purchaseOrder.rejected`, `purchaseOrder.actualizing`, `purchaseOrder.paid`, `purchaseOrder.void`
 - Documents: `document.created`, `document.linked`, `document.unlinked`, `document.deleted`
-- Library: `incentive.added`, `pack.installed`, `pack.uninstalled`
+- Library: `incentive.added`
 
 Each delivery contains `id`, `event`, `workspaceId`, `occurredAt`, and `data`. Project-scoped events may also contain `projectId`. Use the delivery `id` to detect duplicates.
 

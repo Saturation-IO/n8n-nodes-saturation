@@ -33,8 +33,6 @@ const WEBHOOK_EVENTS: INodePropertyOptions[] = [
 	{ name: 'Document Unlinked', value: 'document.unlinked' },
 	{ name: 'Document Deleted', value: 'document.deleted' },
 	{ name: 'Incentive Added', value: 'incentive.added' },
-	{ name: 'Pack Installed', value: 'pack.installed' },
-	{ name: 'Pack Uninstalled', value: 'pack.uninstalled' },
 ];
 
 function getBaseUrl(credentials: IDataObject): string {
