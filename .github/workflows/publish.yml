@@ -46,7 +46,10 @@ jobs:
       - run: npm run build
       - run: npm run lint
       - run: npm test
-      - run: npm audit
+      # The published package has no runtime dependencies. n8n-workflow is a
+      # host-provided peer and a dev-only test dependency, so audit only what
+      # this package ships instead of n8n's dependency tree.
+      - run: npm audit --omit=dev
       - run: npm pack --dry-run
 
   publish:
