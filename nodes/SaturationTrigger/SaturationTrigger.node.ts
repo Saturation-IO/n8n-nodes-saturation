@@ -29,12 +29,10 @@ const WEBHOOK_EVENTS: INodePropertyOptions[] = [
 	{ name: 'Purchase Order Paid', value: 'purchaseOrder.paid' },
 	{ name: 'Purchase Order Voided', value: 'purchaseOrder.void' },
 	{ name: 'Document Created', value: 'document.created' },
-	{ name: 'Document Assigned', value: 'document.assigned' },
-	{ name: 'Document Unassigned', value: 'document.unassigned' },
+	{ name: 'Document Linked', value: 'document.linked' },
+	{ name: 'Document Unlinked', value: 'document.unlinked' },
 	{ name: 'Document Deleted', value: 'document.deleted' },
 	{ name: 'Incentive Added', value: 'incentive.added' },
-	{ name: 'Pack Installed', value: 'pack.installed' },
-	{ name: 'Pack Uninstalled', value: 'pack.uninstalled' },
 ];
 
 function getBaseUrl(credentials: IDataObject): string {
@@ -117,12 +115,6 @@ export class SaturationTrigger implements INodeType {
 		},
 		inputs: [],
 		outputs: [NodeConnectionTypes.Main],
-		// n8n's type only accepts `true` (or omission) -- there is no way to declare
-		// "not a tool" -- and the verification scan requires the property to be
-		// present. So `true` it is, which is also what n8n's own rule advises. In
-		// practice a webhook trigger is started by Saturation pushing an event, not
-		// by a tool call, so this changes nothing about how it runs.
-		usableAsTool: true,
 		credentials: [
 			{
 				name: 'saturationApi',
@@ -153,16 +145,9 @@ export class SaturationTrigger implements INodeType {
 				type: 'string',
 				default: '',
 				description:
-					'Optional. Narrow the subscription to a single project (prj_…). Leave blank for every project you can read in the workspace.',
+					'Optional. Narrow the subscription to one project. Leave blank for every project you can read in the workspace.',
 			},
-			// No Payload Style option: v1 delivers the THIN envelope for every
-			// subscription. The server accepts `payloadStyle: 'full'` but
-			// documents that those subscriptions "also receive the thin body for
-			// now — the CASL-projected object inline requires the per-entity
-			// projection service, deferred with this loud note rather than
-			// shipping an unprojected (permission-leaking) object"
-			// (apps-next/next-api/src/jobs/webhook-delivery.ts:37-41).
-			//
+			// Webhook deliveries contain resource identifiers.
 			// Offering the choice therefore lied to the user: picking "Full"
 			// still delivered an id-only envelope, and every downstream node
 			// reading inline fields got undefined. The Zapier factory hardcodes
@@ -189,10 +174,20 @@ export class SaturationTrigger implements INodeType {
 						json: true,
 					});
 					return true;
-				} catch {
-					// 404 not_found => the subscription no longer exists; recreate it.
-					delete webhookData.webhookId;
-					return false;
+				} catch (error) {
+					const status =
+						(error as { httpCode?: string; statusCode?: number })?.statusCode ??
+						Number((error as { httpCode?: string })?.httpCode);
+					if (status === 404) {
+						// The subscription no longer exists. Clear all state so n8n can recreate it.
+						delete webhookData.webhookId;
+						delete webhookData.secret;
+						return false;
+					}
+					// Auth, server, and network failures do not prove that the
+					// subscription is gone. Surface them instead of attempting a
+					// duplicate create.
+					throw new NodeApiError(this.getNode(), error as JsonObject);
 				}
 			},
 
@@ -206,7 +201,7 @@ export class SaturationTrigger implements INodeType {
 				// Always thin: v1 delivers the id-only envelope regardless, so
 				// requesting `full` would only misrepresent what arrives. See the
 				// Payload Style note on the properties list above.
-				const body: IDataObject = { url: webhookUrl, events, payloadStyle: 'thin' };
+				const body: IDataObject = { url: webhookUrl, events };
 				if (projectId) {
 					body.projectId = projectId;
 				}
@@ -256,8 +251,9 @@ export class SaturationTrigger implements INodeType {
 					// 500, an auth failure, a network fault -- must surface: the lines
 					// below drop the webhook id, so swallowing a real failure leaves a
 					// live subscription on the server that nothing can ever delete.
-					const status = (error as { httpCode?: string; statusCode?: number })?.statusCode
-						?? Number((error as { httpCode?: string })?.httpCode);
+					const status =
+						(error as { httpCode?: string; statusCode?: number })?.statusCode ??
+						Number((error as { httpCode?: string })?.httpCode);
 					if (status !== 404) {
 						// Wrapped, not re-thrown raw, so n8n renders it as a node error
 						// with the API's own message attached rather than a bare stack.

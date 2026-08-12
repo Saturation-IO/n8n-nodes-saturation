@@ -11,17 +11,14 @@ export const documentOperations: INodeProperties[] = [
 		displayOptions: { show },
 		options: [
 			{
-				name: 'Assign',
-				value: 'assign',
-				action: 'Assign a document',
-				description: 'Assign an already-dropped document to a typed target',
-				// POST /documents/{documentId}/assign — idempotent on
-				// the same target id; the Idempotency-Key keeps the unified
-				// client write contract.
+				name: 'Link',
+				value: 'link',
+				action: 'Link a document',
+				description: 'Link an existing document to a typed target',
 				routing: {
 					request: {
-						method: 'POST',
-						url: '=/documents/{{$parameter.documentId}}/assign',
+						method: 'PUT',
+						url: '=/documents/{{$parameter.documentId}}/links/{{$parameter.kind}}',
 						headers: {
 							'Idempotency-Key': '=n8n-{{$execution.id}}-{{$itemIndex}}',
 						},
@@ -41,7 +38,7 @@ export const documentOperations: INodeProperties[] = [
 				},
 			},
 		],
-		default: 'assign',
+		default: 'link',
 	},
 ];
 
@@ -53,21 +50,23 @@ export const documentFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The document to assign (doc_…)',
-		displayOptions: { show: { ...show, operation: ['assign'] } },
+		description: 'The document to link (doc_ ID)',
+		displayOptions: { show: { ...show, operation: ['link'] } },
 	},
 	{
 		displayName: 'Target Kind',
-		name: 'targetKind',
+		name: 'kind',
 		type: 'options',
 		default: 'transaction',
 		options: [
-			{ name: 'Transaction', value: 'transaction' },
-			{ name: 'Purchase Order', value: 'purchaseOrder' },
+			{ name: 'Budget Line', value: 'budgetLine' },
 			{ name: 'Contact', value: 'contact' },
+			{ name: 'Payment', value: 'payment' },
+			{ name: 'Project', value: 'project' },
+			{ name: 'Purchase Order', value: 'purchaseOrder' },
+			{ name: 'Transaction', value: 'transaction' },
 		],
-		displayOptions: { show: { ...show, operation: ['assign'] } },
-		routing: { send: { type: 'body', property: 'target.kind' } },
+		displayOptions: { show: { ...show, operation: ['link'] } },
 	},
 	{
 		displayName: 'Target ID',
@@ -75,17 +74,17 @@ export const documentFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The target ID (txn_…, lin_…, po_…, con_…)',
-		displayOptions: { show: { ...show, operation: ['assign'] } },
-		routing: { send: { type: 'body', property: 'target.id' } },
+		description: 'The target ID shown by the matching Saturation resource',
+		displayOptions: { show: { ...show, operation: ['link'] } },
+		routing: { send: { type: 'body', property: 'targetId' } },
 	},
 	{
-		displayName: 'Replace Existing Assignment',
+		displayName: 'Replace Existing Link',
 		name: 'replace',
 		type: 'boolean',
 		default: false,
-		description: 'Whether to move a same-kind assignment to this target',
-		displayOptions: { show: { ...show, operation: ['assign'] } },
+		description: 'Whether to replace a different target already linked for this kind',
+		displayOptions: { show: { ...show, operation: ['link'] } },
 		routing: { send: { type: 'body', property: 'replace' } },
 	},
 

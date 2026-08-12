@@ -28,7 +28,8 @@ export const projectIdProperty: INodeProperties = {
 	required: true,
 	default: '',
 	description:
-		'The project to act on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+		'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+	hint: 'The list shows the first 100 projects you can read.',
 };
 
 // Optional project filter for workspace-level list operations. Absent = the
@@ -40,7 +41,7 @@ export const projectIdFilterProperty: INodeProperties = {
 	// a valid value rather than n8n's red invalid-options state.
 	typeOptions: { loadOptionsMethod: 'listProjectsWithAll' },
 	description:
-		'Optional project filter. Choose All Projects to list across the whole workspace, or a project to scope the read. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+		'Choose All Projects to list across the workspace. The selector shows the first 100 projects you can read. If a project is not listed, specify its ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 };
 
 // Routing for an always-displayed optional query parameter. n8n's declarative

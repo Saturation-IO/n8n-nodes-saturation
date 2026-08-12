@@ -9,7 +9,6 @@ import {
 	listProjects,
 	listProjectsWithAll,
 	listContacts,
-	listRatePacks,
 } from './methods/loadOptions';
 
 // Declarative Saturation node. Every operation is HTTP-routing onto the
@@ -65,7 +64,6 @@ export class Saturation implements INodeType {
 			listProjects,
 			listProjectsWithAll,
 			listContacts,
-			listRatePacks,
 		},
 	};
 }

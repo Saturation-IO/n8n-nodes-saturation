@@ -23,12 +23,10 @@ const EXPECTED_EVENTS = [
 	'purchaseOrder.paid',
 	'purchaseOrder.void',
 	'document.created',
-	'document.assigned',
-	'document.unassigned',
+	'document.linked',
+	'document.unlinked',
 	'document.deleted',
 	'incentive.added',
-	'pack.installed',
-	'pack.uninstalled',
 ];
 
 describe('SaturationApi credential', () => {
@@ -44,6 +42,17 @@ describe('SaturationApi credential', () => {
 			'=Bearer {{$credentials.apiToken}}',
 		);
 	});
+
+	it('treats personal API tokens as opaque credentials', () => {
+		const apiToken = cred.properties.find((property) => property.name === 'apiToken');
+		expect(apiToken.description).not.toMatch(/JWT/i);
+	});
+
+	it('points users to the current API token setting', () => {
+		const apiToken = cred.properties.find((property) => property.name === 'apiToken');
+		expect(apiToken.description).toContain('Settings > Developers > API');
+		expect(apiToken.description).not.toContain('Settings > API Tokens');
+	});
 });
 
 describe('Saturation action node', () => {
@@ -56,27 +65,107 @@ describe('Saturation action node', () => {
 		expect(resources).toEqual(['transaction', 'document', 'library', 'search']);
 	});
 
-	it('provides the project/contact/rate-pack dropdowns', () => {
+	it('provides the project and contact dropdowns', () => {
 		expect(Object.keys(node.methods.loadOptions).sort()).toEqual(
-			['listContacts', 'listProjects', 'listProjectsWithAll', 'listRatePacks'].sort(),
+			['listContacts', 'listProjects', 'listProjectsWithAll'].sort(),
 		);
+	});
+
+	it('discloses the first-100 option limit and expression ID escape hatch', () => {
+		const loadedOptions = node.description.properties.filter(
+			(property) => property.typeOptions?.loadOptionsMethod,
+		);
+		for (const property of loadedOptions) {
+			expect(property.hint).toContain('first 100');
+			expect(property.description).toContain('expression');
+		}
+	});
+
+	it('uses bounded collection controls and documents the one-page limit', () => {
+		const limits = node.description.properties.filter((property) => property.name === 'limit');
+		expect(limits).toHaveLength(3);
+		for (const limit of limits) {
+			expect(limit.typeOptions?.minValue).toBe(1);
+			expect(limit.description).toBe('Max number of results to return');
+		}
+		const readme = readFileSync(new URL('../README.md', import.meta.url), 'utf8');
+		expect(readme).toContain('one API page, with up to 100 rows');
 	});
 
 	it('sets an Idempotency-Key header on every write operation', () => {
 		const writeOps = node.description.properties
 			.filter((p) => p.name === 'operation')
 			.flatMap((p) => p.options)
-			.filter((o) => o.routing && o.routing.request && o.routing.request.method === 'POST');
+			.filter(
+				(o) =>
+					o.routing &&
+					o.routing.request &&
+					['POST', 'PUT'].includes(o.routing.request.method),
+			);
 		expect(writeOps.length).toBeGreaterThan(0);
 		for (const op of writeOps) {
 			expect(op.routing.request.headers).toBeDefined();
 			expect(op.routing.request.headers['Idempotency-Key']).toBeTruthy();
 		}
 	});
+
+	it('requires a Transaction date with an execution-time default', () => {
+		const date = node.description.properties.find(
+			(property) =>
+				property.name === 'timestamp' &&
+				property.displayOptions?.show?.operation?.includes('create'),
+		);
+		expect(date.required).toBe(true);
+		expect(date.default).toBe('={{ $now.toISO() }}');
+	});
+
+	it('packs the exact supported write routes and body fields', () => {
+		const operations = node.description.properties
+			.filter((property) => property.name === 'operation')
+			.flatMap((property) => property.options);
+		const operation = (value) => operations.find((candidate) => candidate.value === value);
+		expect(operation('create').routing.request).toMatchObject({
+			method: 'POST',
+			url: '=/transactions',
+		});
+		expect(operation('link').routing.request).toMatchObject({
+			method: 'PUT',
+			url: '=/documents/{{$parameter.documentId}}/links/{{$parameter.kind}}',
+		});
+		expect(operation('addIncentive').routing.request).toMatchObject({
+			method: 'POST',
+			url: '=/projects/{{$parameter.projectId}}/library/incentives',
+		});
+
+		const routedBody = Object.fromEntries(
+			node.description.properties
+				.filter((property) => property.routing?.send?.type === 'body')
+				.map((property) => [property.name, property.routing.send.property]),
+		);
+		expect(routedBody).toMatchObject({
+			timestamp: 'timestamp',
+			targetId: 'targetId',
+			replace: 'replace',
+			programId: 'programId',
+		});
+		expect(Object.values(routedBody)).not.toContain('target.kind');
+		expect(Object.values(routedBody)).not.toContain('target.id');
+	});
+
+	it('offers every caller-writable document-link kind', () => {
+		const kind = node.description.properties.find((property) => property.name === 'kind');
+		expect(kind.options.map((option) => option.value)).toEqual([
+			'budgetLine', 'contact', 'payment', 'project', 'purchaseOrder', 'transaction',
+		]);
+	});
 });
 
 describe('SaturationTrigger node', () => {
 	const node = new SaturationTrigger();
+
+	it('does not advertise a webhook trigger as an AI tool', () => {
+		expect(node.description).not.toHaveProperty('usableAsTool');
+	});
 
 	it('subscribes/unsubscribes via the Webhook API lifecycle', () => {
 		expect(Object.keys(node.webhookMethods.default).sort()).toEqual(
@@ -105,8 +194,7 @@ describe('SaturationTrigger node', () => {
 		const requests = [];
 		const ctx = {
 			getNodeWebhookUrl: () => 'https://n8n.example/webhook/abc',
-			getNodeParameter: (name) =>
-				({ events: ['transaction.created'], projectId: '' })[name],
+			getNodeParameter: (name) => ({ events: ['transaction.created'], projectId: '' })[name],
 			getCredentials: async () => ({ apiToken: 't', baseUrl: 'https://api.example/v1' }),
 			getWorkflowStaticData: () => ({}),
 			helpers: {
@@ -120,67 +208,94 @@ describe('SaturationTrigger node', () => {
 		};
 		await node.webhookMethods.default.create.call(ctx);
 		expect(requests).toHaveLength(1);
-		expect(requests[0].body.payloadStyle).toBe('thin');
+		expect(requests[0].body).not.toHaveProperty('payloadStyle');
+	});
+
+	it('recreates a missing webhook only after a 404', async () => {
+		const webhookData = { webhookId: 'whk_missing', secret: 'whsec_test' };
+		const ctx = {
+			getWorkflowStaticData: () => webhookData,
+			getCredentials: async () => ({ apiToken: 't', baseUrl: 'https://api.example/v1' }),
+			helpers: {
+				httpRequestWithAuthentication: {
+					call: async () => {
+						throw { statusCode: 404 };
+					},
+				},
+			},
+		};
+
+		await expect(node.webhookMethods.default.checkExists.call(ctx)).resolves.toBe(false);
+		expect(webhookData).toEqual({});
+	});
+
+	it('surfaces a webhook lookup failure instead of creating a duplicate', async () => {
+		const webhookData = { webhookId: 'whk_existing', secret: 'whsec_test' };
+		const ctx = {
+			getNode: () => ({ name: 'Saturation Trigger', type: 'saturationTrigger' }),
+			getWorkflowStaticData: () => webhookData,
+			getCredentials: async () => ({ apiToken: 't', baseUrl: 'https://api.example/v1' }),
+			helpers: {
+				httpRequestWithAuthentication: {
+					call: async () => {
+						throw { statusCode: 500, message: 'upstream unavailable' };
+					},
+				},
+			},
+		};
+
+		await expect(node.webhookMethods.default.checkExists.call(ctx)).rejects.toThrow();
+		expect(webhookData).toEqual({ webhookId: 'whk_existing', secret: 'whsec_test' });
 	});
 });
 
 // Every URL the node routes to, pinned against the real /v1 route table.
 //
-// The regression: the rate-pack operation posted to
-// `/library/rates/{packId}/install`, but the route is `/add`
-// (apps-next/next-api/src/routes/v1/library/index.ts). It 404'd on every call
-// and nothing caught it — the node's URLs were never checked against the API
-// they target, so a typo in a template string was indistinguishable from a
-// working integration until someone ran it.
+// Keep every declarative route pinned to the public contract. A stale template
+// must fail here before it ships as a node operation that always returns 404.
 //
 // Kept as a literal allow-list rather than a live fetch so the test is
 // hermetic; when a path here changes, the diff makes you look at the route.
 describe('Saturation action node endpoints', () => {
-  const KNOWN_V1_PATHS = new Set([
-    '/transactions',
-    '/documents',
-    '/documents/{documentId}/assign',
-    '/search',
-    '/projects/{projectId}/library/rates/{packId}/add',
-    '/projects/{projectId}/library/incentives/add',
-  ]);
+	const KNOWN_V1_PATHS = new Set([
+		'/transactions',
+		'/documents',
+		'/documents/{documentId}/links/{kind}',
+		'/search',
+		'/projects/{projectId}/library/incentives',
+	]);
 
-  // Collapse n8n's `={{$parameter.x}}` interpolation back to `{x}` so a routed
-  // URL can be compared to the OpenAPI-style path it targets.
-  const normalize = (url) =>
-    url.replace(/^=/, '').replace(/\{\{\s*\$parameter\.(\w+)\s*\}\}/g, '{$1}');
+	// Collapse n8n's `={{$parameter.x}}` interpolation back to `{x}` so a routed
+	// URL can be compared to the OpenAPI-style path it targets.
+	const normalize = (url) =>
+		url.replace(/^=/, '').replace(/\{\{\s*\$parameter\.(\w+)\s*\}\}/g, '{$1}');
 
-  const routedUrls = (node) => {
-    const urls = [];
-    const walk = (value) => {
-      if (Array.isArray(value)) return value.forEach(walk);
-      if (!value || typeof value !== 'object') return;
-      if (value.request && typeof value.request.url === 'string') {
-        urls.push(value.request.url);
-      }
-      Object.values(value).forEach(walk);
-    };
-    walk(node.description.properties);
-    return urls;
-  };
+	const routedUrls = (node) => {
+		const urls = [];
+		const walk = (value) => {
+			if (Array.isArray(value)) return value.forEach(walk);
+			if (!value || typeof value !== 'object') return;
+			if (value.request && typeof value.request.url === 'string') {
+				urls.push(value.request.url);
+			}
+			Object.values(value).forEach(walk);
+		};
+		walk(node.description.properties);
+		return urls;
+	};
 
-  it('routes only to paths that exist in the /v1 route table', () => {
-    const urls = routedUrls(new Saturation());
-    expect(urls.length, 'expected the node to route somewhere').toBeGreaterThan(0);
-    for (const url of urls) {
-      const path = normalize(url);
-      expect(
-        KNOWN_V1_PATHS.has(path),
-        `"${path}" is not a known /v1 path — check apps-next/next-api/src/routes/v1 before adding it here`,
-      ).toBe(true);
-    }
-  });
+	it('routes only to paths that exist in the /v1 route table', () => {
+		const urls = routedUrls(new Saturation());
+		expect(urls.length, 'expected the node to route somewhere').toBeGreaterThan(0);
+		for (const url of urls) {
+			const path = normalize(url);
+			expect(
+				KNOWN_V1_PATHS.has(path),
+				`"${path}" is not a known /v1 path. Check the public OpenAPI contract before adding it here.`,
+			).toBe(true);
+		}
+	});
 
-  it('installs a rate pack via /add, the verb the route actually exposes', () => {
-    const urls = routedUrls(new Saturation()).map(normalize);
-    expect(urls).toContain('/projects/{projectId}/library/rates/{packId}/add');
-    expect(urls.some((u) => u.endsWith('/install'))).toBe(false);
-  });
 });
 
 // The node icon ships inside the package (`icon: 'file:saturation.svg'`), so
@@ -189,22 +304,22 @@ describe('Saturation action node endpoints', () => {
 // each node's own folder, and nothing else keeps them in step: the pair sat at
 // a hand-drawn "S" placeholder rather than the Saturation mark, in both places.
 describe('node icon', () => {
-  const read = (p) => readFileSync(new URL(p, import.meta.url), 'utf8');
+	const read = (p) => readFileSync(new URL(p, import.meta.url), 'utf8');
 
-  it('is the Saturation mark, not a placeholder letterform', () => {
-    const svg = read('../nodes/Saturation/saturation.svg');
-    // The real mark is a single long bezier path lifted from favicon.svg. The
-    // placeholder was a short hand-written path; length is a blunt but honest
-    // discriminator between the two.
-    expect(svg).toContain('<path');
-    expect(svg.length).toBeGreaterThan(1000);
-  });
+	it('is the Saturation mark, not a placeholder letterform', () => {
+		const svg = read('../nodes/Saturation/saturation.svg');
+		// The real mark is a single long bezier path lifted from favicon.svg. The
+		// placeholder was a short hand-written path; length is a blunt but honest
+		// discriminator between the two.
+		expect(svg).toContain('<path');
+		expect(svg.length).toBeGreaterThan(1000);
+	});
 
-  it('is byte-identical across both node folders', () => {
-    expect(read('../nodes/Saturation/saturation.svg')).toBe(
-      read('../nodes/SaturationTrigger/saturation.svg'),
-    );
-  });
+	it('is byte-identical across both node folders', () => {
+		expect(read('../nodes/Saturation/saturation.svg')).toBe(
+			read('../nodes/SaturationTrigger/saturation.svg'),
+		);
+	});
 });
 
 describe('API host', () => {
